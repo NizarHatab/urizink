@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-
+// use app router instead 
 export default function Header() {
   const [open, setOpen] = useState(false);
 
