@@ -17,21 +17,37 @@ function formatScheduled(scheduledAt?: string) {
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<boolean>(false);
   useEffect(() => {
     const fetchBookings = async () => {
+      setLoading(true);
       const response = await getBookings();
       console.log("API RESPONSE:", response);
       console.log("DATA TYPE:", typeof response.data, response.data);
       if (response.success && Array.isArray(response.data)) {
         setBookings(response.data);
+        setSuccess(true);
+        setLoading(false);
       } else {
         console.error("Failed to fetch bookings:", response.error);
         setBookings([]); // safety
+        setSuccess(false);
+        setLoading(false);
+        setError(response.error ?? "Failed to fetch bookings");
       }
     };
-  
+
     fetchBookings();
   }, []);
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
   return (
     <div className="p-8 space-y-6 max-w-7xl mx-auto w-full">
       {/* HEADER */}
