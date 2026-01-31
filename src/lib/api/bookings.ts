@@ -35,7 +35,6 @@ export async function getBookings(): Promise<BookingResponse> {
         return {
             success: true,
             data: await response.json(),
-            error:null 
         };
     } catch (error) {
         console.error("BOOKING_ERROR:", error);
