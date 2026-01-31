@@ -29,13 +29,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-     <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable}>
       <body className="bg-black text-white font-sans antialiased">
         {/* TOASTER */}
         <Toaster
           position="top-right"
           richColors
           duration={3000}
+          expand
+          className="sm:top-4 sm:right-4 bottom-4 left-1/2 -translate-x-1/2 sm:translate-x-0"
         />
         {/* MAIN */}
         <main className="flex flex-col items-center py-12 px-4 md:px-10">
