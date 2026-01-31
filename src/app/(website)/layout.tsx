@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "../globals.css";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,7 +31,16 @@ export default function RootLayout({
   return (
      <html lang="en" className={inter.variable}>
       <body className="bg-black text-white font-sans antialiased">
-        {children}
+        {/* TOASTER */}
+        <Toaster
+          position="top-right"
+          richColors
+          duration={3000}
+        />
+        {/* MAIN */}
+        <main className="flex flex-col items-center py-12 px-4 md:px-10">
+          {children}
+        </main>
       </body>
     </html>
   );

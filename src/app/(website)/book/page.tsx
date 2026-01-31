@@ -3,8 +3,49 @@
 import Footer from "@/components/layout/footer";
 import Header from "@/components/layout/header";
 import { ReactNode } from "react";
+import { bookingFormToPayload } from "@/lib/serializers/bookings";
+import createBookingRequest from "@/lib/api/bookings";
+import { useState } from "react";
+import { notify } from "@/lib/ui/toast";
+
 
 export default function Page() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<boolean>(false);
+  /* ---------------- DATA ---------------- */
+
+  const placements = ["Forearm", "Upper Arm", "Chest", "Back", "Thigh", "Calf"];
+  const times = [
+    { label: "11:00 AM", value: "11:00" },
+    { label: "02:00 PM", value: "14:00" },
+    { label: "05:00 PM", value: "17:00" },
+  ]; async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const payload = bookingFormToPayload(
+        new FormData(e.currentTarget)
+      );
+      const { success, error } = await createBookingRequest(payload);
+      if (!success) {
+        notify.error(error || "Failed to create booking request");
+        setLoading(false);
+        return;
+      }
+      notify.success("Booking request submitted successfully");
+      setSuccess(true);
+      setLoading(false);
+      //reset the form 
+      const form = e.currentTarget;
+      form.reset();
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : "Failed to create booking request");
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-black text-white  antialiased">
       {/* HEADER */}
@@ -25,21 +66,25 @@ export default function Page() {
             <Step index={3} label="Schedule" />
           </div>
 
-          <form className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
             <Card title="1. Your Concept" icon="edit_note">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input label="First Name" placeholder="Jane" />
-                <Input label="Last Name" placeholder="Doe" />
+                <Input label="First Name" name="firstName" placeholder="Jane" />
+                <Input label="Last Name" name="lastName" placeholder="Doe" />
+                <Input label="Phone" name="phone" placeholder="0961790000000" />
+                <Input label="Email" name="email" placeholder="jane@example.com" />
               </div>
 
               <Textarea
                 label="Tattoo Description"
+                name="description"
                 placeholder="I'm looking to get a realistic lion portrait..."
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Select
                   label="Approximate Size"
+                  name="size"
                   options={[
                     "Small (up to 5cm)",
                     "Medium (up to 15cm)",
@@ -57,7 +102,7 @@ export default function Page() {
             <Card title="2. Body Placement" icon="accessibility_new">
               <div className="grid grid-cols-2 gap-3">
                 {placements.map((p) => (
-                  <Radio key={p} name="placement" label={p} />
+                  <Radio key={p} name="placement" label={p} value={p} />
                 ))}
               </div>
             </Card>
@@ -70,6 +115,7 @@ export default function Page() {
                   </label>
                   <input
                     type="date"
+                    name="date"
                     className="w-full bg-neutral-100 text-black px-4 py-3 focus:ring-2 focus:ring-white focus:outline-none"
                   />
                 </div>
@@ -80,7 +126,12 @@ export default function Page() {
                   </label>
                   <div className="space-y-3">
                     {times.map((t) => (
-                      <Radio key={t} name="time" label={t} />
+                      <Radio
+                        key={t.value}
+                        name="time"
+                        label={t.label}
+                        value={t.value}
+                      />
                     ))}
                   </div>
                 </div>
@@ -89,10 +140,11 @@ export default function Page() {
 
             <div className="flex justify-end border-t border-neutral-800 pt-6">
               <button
+                disabled={loading}
                 type="submit"
                 className="flex items-center gap-3 bg-white text-black px-8 py-4 font-black uppercase tracking-widest hover:bg-neutral-200 transition shadow-lg"
               >
-                Confirm Booking
+                {loading ? "Submitting..." : "Confirm Booking"}
                 <span className="material-symbols-outlined">arrow_forward</span>
               </button>
             </div>
@@ -129,6 +181,7 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 
 interface SelectProps {
   label: string;
+  name: string;
   options: string[];
 }
 
@@ -139,21 +192,19 @@ interface FileUploadProps {
 interface RadioProps {
   label: string;
   name: string;
+  value: string;
 }
-
 /* ---------------- COMPONENTS ---------------- */
 
 function Step({ index, label, active = false }: StepProps) {
   return (
     <div
-      className={`flex items-center gap-3 border-b-2 pb-2 ${
-        active ? "border-white" : "border-neutral-700 text-neutral-500"
-      }`}
+      className={`flex items-center gap-3 border-b-2 pb-2 ${active ? "border-white" : "border-neutral-700 text-neutral-500"
+        }`}
     >
       <span
-        className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
-          active ? "bg-white text-black" : "border border-neutral-600"
-        }`}
+        className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${active ? "bg-white text-black" : "border border-neutral-600"
+          }`}
       >
         {index}
       </span>
@@ -206,15 +257,15 @@ function Textarea({ label, ...props }: TextareaProps) {
   );
 }
 
-function Select({ label, options }: SelectProps) {
+function Select({ label, options, name }: SelectProps) {
   return (
     <div className="space-y-2">
       <label className="block text-xs uppercase font-bold tracking-widest text-neutral-400">
         {label}
       </label>
-      <select className="w-full bg-neutral-100 border-0 text-black px-4 py-3 focus:ring-2 focus:ring-white focus:outline-none">
+      <select name={name} className="w-full bg-neutral-100 border-0 text-black px-4 py-3 focus:ring-2 focus:ring-white focus:outline-none">
         {options.map((o) => (
-          <option key={o}>{o}</option>
+          <option key={o}>{o} </option>
         ))}
       </select>
     </div>
@@ -240,12 +291,14 @@ function FileUpload({ label }: FileUploadProps) {
   );
 }
 
-function Radio({ label, name }: RadioProps) {
+function Radio({ label, name, value }: RadioProps) {
   return (
     <label className="flex items-center gap-3 p-3 bg-neutral-900 border border-neutral-700 cursor-pointer hover:border-white transition-colors group">
       <input
         type="radio"
         name={name}
+        value={value}
+        required
         className="text-black focus:ring-white bg-neutral-800 border-neutral-600"
       />
       <span className="text-sm font-medium uppercase tracking-wide group-hover:text-white text-neutral-400">
@@ -255,8 +308,3 @@ function Radio({ label, name }: RadioProps) {
   );
 }
 
-/* ---------------- DATA ---------------- */
-
-const placements = ["Forearm", "Upper Arm", "Chest", "Back", "Thigh", "Calf"];
-
-const times = ["11:00 AM", "02:00 PM", "05:00 PM"];

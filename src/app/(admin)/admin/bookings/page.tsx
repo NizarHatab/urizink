@@ -1,43 +1,37 @@
+
+'use client'
 import StatusBadge from "@/components/admin/status-badge";
+import { getBookings } from "@/lib/api/bookings";
+import { Booking } from "@/types";
+import { useEffect, useState } from "react";
 import { FiFilter, FiMoreVertical } from "react-icons/fi";
 
-const bookings = [
-  {
-    id: 1,
-    name: "Marco Rossi",
-    email: "m.rossi@email.com",
-    service: "Full Sleeve Project",
-    style: "Blackwork style",
-    artist: "Viktor",
-    date: "Oct 12, 2023",
-    time: "10:00 AM",
-    status: "pending",
-  },
-  {
-    id: 2,
-    name: "Julia Thorne",
-    email: "jthorne@web.com",
-    service: "Fine Line Floral",
-    style: "Forearm piece",
-    artist: "Elena",
-    date: "Oct 14, 2023",
-    time: "1:30 PM",
-    status: "confirmed",
-  },
-  {
-    id: 3,
-    name: "Leon Black",
-    email: "black.leon@mail.com",
-    service: "Traditional Skull",
-    style: "Bicep placement",
-    artist: "Sarah",
-    date: "Oct 05, 2023",
-    time: "4:00 PM",
-    status: "completed",
-  },
-];
+function formatScheduled(scheduledAt?: string) {
+  if (!scheduledAt) return { date: "—", time: "—" };
+  const d = new Date(scheduledAt);
+  return {
+    date: d.toLocaleDateString(),
+    time: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  };
+}
 
 export default function BookingsPage() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  useEffect(() => {
+    const fetchBookings = async () => {
+      const response = await getBookings();
+      console.log("API RESPONSE:", response);
+      console.log("DATA TYPE:", typeof response.data, response.data);
+      if (response.success && Array.isArray(response.data)) {
+        setBookings(response.data);
+      } else {
+        console.error("Failed to fetch bookings:", response.error);
+        setBookings([]); // safety
+      }
+    };
+  
+    fetchBookings();
+  }, []);
   return (
     <div className="p-8 space-y-6 max-w-7xl mx-auto w-full">
       {/* HEADER */}
@@ -46,11 +40,10 @@ export default function BookingsPage() {
           {["All", "Pending", "Upcoming", "Completed"].map((f, i) => (
             <button
               key={f}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold border transition ${
-                i === 0
-                  ? "bg-white text-black border-white"
-                  : "border-white/10 text-gray-400 hover:border-white/30 hover:text-white"
-              }`}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold border transition ${i === 0
+                ? "bg-white text-black border-white"
+                : "border-white/10 text-gray-400 hover:border-white/30 hover:text-white"
+                }`}
             >
               {f}
             </button>
@@ -82,46 +75,48 @@ export default function BookingsPage() {
           </thead>
 
           <tbody className="divide-y divide-white/5">
-            {bookings.map((b) => (
-              <tr key={b.id} className="hover:bg-white/2 transition">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs font-bold">
-                      {b.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
+            {bookings.map((b) => {
+              const { date, time } = formatScheduled(b.scheduledAt);
+              const name = `${b.firstName} ${b.lastName}`.trim() || "—";
+              const initials = name.split(" ").map((n) => n[0]).join("") || "?";
+              return (
+                <tr key={b.id} className="hover:bg-white/2 transition">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="size-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs font-bold">
+                        {initials}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold">{name}</p>
+                        <p className="text-[10px] text-gray-500">{b.email ?? "—"}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold">{b.name}</p>
-                      <p className="text-[10px] text-gray-500">{b.email}</p>
-                    </div>
-                  </div>
-                </td>
+                  </td>
 
-                <td className="px-6 py-4">
-                  <p className="text-sm">{b.service}</p>
-                  <p className="text-[10px] text-gray-500">{b.style}</p>
-                </td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm">{b.description}</p>
+                    <p className="text-[10px] text-gray-500">{b.placement} / {b.size}</p>
+                  </td>
 
-                <td className="px-6 py-4 text-sm font-medium">{b.artist}</td>
+                  <td className="px-6 py-4 text-sm font-medium">{b.artistId ?? "—"}</td>
 
-                <td className="px-6 py-4">
-                  <p className="text-sm">{b.date}</p>
-                  <p className="text-[10px] text-gray-500">{b.time}</p>
-                </td>
+                  <td className="px-6 py-4">
+                    <p className="text-sm">{date}</p>
+                    <p className="text-[10px] text-gray-500">{time}</p>
+                  </td>
 
-                <td className="px-6 py-4">
-                  <StatusBadge status={b.status} />
-                </td>
+                  <td className="px-6 py-4">
+                    <StatusBadge status={b.status} />
+                  </td>
 
-                <td className="px-6 py-4 text-right">
-                  <button className="p-2 text-gray-500 hover:text-white">
-                    <FiMoreVertical />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  <td className="px-6 py-4 text-right">
+                    <button className="p-2 text-gray-500 hover:text-white">
+                      <FiMoreVertical />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
