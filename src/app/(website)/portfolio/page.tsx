@@ -1,5 +1,9 @@
-import Footer from "@/components/layout/footer";
-import Header from "@/components/layout/header";
+"use client";
+
+import { motion } from "framer-motion";
+import { useState } from "react";
+
+const filters = ["All", "Fine Line", "Realism", "Micro-Realism", "Sleeve Work"] as const;
 
 const images = [
   {
@@ -34,80 +38,109 @@ const images = [
   },
 ];
 
-export default function Page() {
-  return (
-    <div className="min-h-screen bg-black text-white">
-      <Header />
+const ease = [0.16, 1, 0.3, 1] as const;
 
-      <main className="w-full flex flex-col items-center py-12 px-4 md:px-10">
-        <div className="max-w-7xl w-full">
-          {/* TITLE */}
-          <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter mb-2">
-            Portfolio
-          </h1>
-          <p className="text-neutral-400 uppercase tracking-[0.3em] text-sm mb-16">
-            Black & Grey Specialists • Beirut, Lebanon
-          </p>
+export default function Page() {
+  const [activeFilter, setActiveFilter] = useState("All");
+
+  return (
+    <div className="flex w-full flex-col items-center px-4 py-12 md:px-10">
+        <div className="w-full max-w-7xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease }}
+          >
+            <h1 className="mb-2 text-5xl font-black uppercase tracking-tighter text-white md:text-7xl">
+              Portfolio
+            </h1>
+            <p className="mb-16 text-sm uppercase tracking-[0.3em] text-[var(--ink-gray-400)]">
+              Black & Grey Specialists • Beirut, Lebanon
+            </p>
+          </motion.div>
 
           {/* FILTER BAR */}
-          <div className="flex flex-wrap items-center gap-8 mb-16 border-b border-neutral-800 pb-2">
-            {[
-              "All",
-              "Fine Line",
-              "Realism",
-              "Micro-Realism",
-              "Sleeve Work",
-            ].map((label, i) => (
-              <button
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05, ease }}
+            className="mb-16 flex flex-wrap items-center gap-8 border-b border-[var(--ink-gray-800)] pb-2"
+          >
+            {filters.map((label, i) => (
+              <motion.button
                 key={label}
-                className={`flex items-center gap-2 pb-3 transition-all uppercase tracking-[0.2em] text-sm font-bold ${
-                  i === 0
-                    ? "border-b-2 border-white"
-                    : "border-b-2 border-transparent text-neutral-500 hover:text-white hover:border-neutral-500"
+                type="button"
+                onClick={() => setActiveFilter(label)}
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                className={`relative pb-3 text-sm font-bold uppercase tracking-[0.2em] transition-colors ${
+                  activeFilter === label
+                    ? "text-white"
+                    : "text-[var(--ink-gray-500)] hover:text-white"
                 }`}
               >
                 {label}
-              </button>
+                {activeFilter === label && (
+                  <motion.span
+                    layoutId="portfolio-filter"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-white"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+              </motion.button>
             ))}
-          </div>
+          </motion.div>
 
           {/* GRID */}
-          <div className="masonry-grid max-w-6xl mx-auto gap-6">
-
-            {images.map((img) => (
-              <div
+          <div className="masonry-grid mx-auto max-w-6xl gap-6">
+            {images.map((img, i) => (
+              <motion.div
                 key={img.src}
-                className="masonry-item group relative overflow-hidden bg-neutral-900 border border-neutral-800 hover:border-white transition-all duration-500 cursor-pointer"
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{
+                  duration: 0.5,
+                  delay: i * 0.06,
+                  ease,
+                }}
+                className="masonry-item group relative cursor-pointer overflow-hidden border border-[var(--ink-gray-800)] bg-[var(--ink-gray-900)] transition-colors duration-500 hover:border-white"
               >
                 <img
                   src={img.src}
                   alt={img.title}
-                  className="w-full grayscale group-hover:grayscale-0 transition-all duration-700"
+                  className="h-full w-full object-cover grayscale transition-all duration-700 group-hover:grayscale-0 group-hover:scale-105"
                 />
-
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
-                  <p className="text-xs uppercase tracking-widest text-neutral-300">
+                <div className="absolute inset-0 flex flex-col justify-end bg-black/40 p-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                  <p className="text-xs uppercase tracking-widest text-[var(--ink-gray-300)]">
                     {img.tag}
                   </p>
-                  <h3 className="text-lg font-bold uppercase tracking-tight">
+                  <h3 className="text-lg font-bold uppercase tracking-tight text-white">
                     {img.title}
                   </h3>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
 
           {/* CTA */}
-          <div className="flex justify-center py-20">
-            <button className="border border-white px-10 py-4 font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all duration-500">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, ease }}
+            className="flex justify-center py-20"
+          >
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02, backgroundColor: "white", color: "black" }}
+              whileTap={{ scale: 0.98 }}
+              className="border border-white px-10 py-4 font-black uppercase tracking-widest text-white transition-colors duration-500 hover:bg-white hover:text-black"
+            >
               Load More Projects
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         </div>
-      </main>
-
-      {/* FOOTER */}
-      <Footer />
     </div>
   );
 }

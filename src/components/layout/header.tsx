@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
-// use app router instead 
+
 export default function Header() {
   const [open, setOpen] = useState(false);
-
+  const pathname = usePathname();
+  const selectedNav = pathname;
   return (
     <header className="sticky top-0 z-50 bg-black border-b border-neutral-800">
       <div className="flex items-center justify-between px-5 md:px-10 h-16">
@@ -21,13 +24,15 @@ export default function Header() {
         </Link>
 
         {/* DESKTOP NAV */}
+        {/* Selected nav have white underline transitioned with framer motion */}
         <nav className="hidden md:flex items-center gap-9 text-sm">
-          <NavLink href="/">Home</NavLink>
-          <NavLink href="/portfolio">Portfolio</NavLink>
-          <NavLink href="/about">About</NavLink>
-          <NavLink href="/contact">Contact</NavLink>
-          <NavLink href="/reviews">Reviews</NavLink>
+          <NavLink href="/" selectedNav={selectedNav}>Home</NavLink>
+          <NavLink href="/portfolio" selectedNav={selectedNav}>Portfolio</NavLink>
+          <NavLink href="/about" selectedNav={selectedNav}>About</NavLink>
+          <NavLink href="/contact" selectedNav={selectedNav}>Contact</NavLink>
+          <NavLink href="/reviews" selectedNav={selectedNav}>Reviews</NavLink>
         </nav>
+         
 
         {/* CTA */}
         <Link
@@ -55,16 +60,27 @@ export default function Header() {
 function NavLink({
   href,
   children,
+  selectedNav,
 }: {
   href: string;
   children: React.ReactNode;
+  selectedNav: string;
 }) {
+  const isActive = selectedNav === href;
   return (
-    <Link
-      href={href}
-      className="uppercase tracking-widest text-neutral-400 hover:text-white transition text-xs font-bold"
-    >
-      {children}
+    <Link href={href} className="relative py-3">
+      <span
+        className={`uppercase tracking-widest text-neutral-400 hover:text-white transition-colors text-xs font-bold ${isActive ? "text-white" : ""}`}
+      >
+        {children}
+      </span>
+      {isActive && (
+        <motion.span
+          layoutId="nav-underline"
+          className="absolute bottom-0 left-0 right-0 h-0.5 bg-white"
+          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+        />
+      )}
     </Link>
   );
 }

@@ -1,87 +1,92 @@
 "use client";
 
-import Footer from "@/components/layout/footer";
-import Header from "@/components/layout/header";
 import { ReactNode } from "react";
 import { bookingFormToPayload } from "@/lib/serializers/bookings";
 import createBookingRequest from "@/lib/api/bookings";
 import { useState } from "react";
 import { notify } from "@/lib/ui/toast";
+import { motion } from "framer-motion";
 
+const placements = ["Forearm", "Upper Arm", "Chest", "Back", "Thigh", "Calf"];
+const times = [
+  { label: "11:00 AM", value: "11:00" },
+  { label: "02:00 PM", value: "14:00" },
+  { label: "05:00 PM", value: "17:00" },
+];
+
+const ease = [0.16, 1, 0.3, 1] as const;
 
 export default function Page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
-  /* ---------------- DATA ---------------- */
 
-  const placements = ["Forearm", "Upper Arm", "Chest", "Back", "Thigh", "Calf"];
-  const times = [
-    { label: "11:00 AM", value: "11:00" },
-    { label: "02:00 PM", value: "14:00" },
-    { label: "05:00 PM", value: "17:00" },
-  ]; async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const payload = bookingFormToPayload(
-        new FormData(e.currentTarget)
-      );
-      const { success, error } = await createBookingRequest(payload);
-      if (!success) {
-        notify.error(error || "Failed to create booking request");
+      const payload = bookingFormToPayload(new FormData(e.currentTarget));
+      const { success: ok, error: err } = await createBookingRequest(payload);
+      if (!ok) {
+        notify.error(err || "Failed to create booking request");
         setLoading(false);
         return;
       }
       notify.success("Booking request submitted successfully");
       setSuccess(true);
       setLoading(false);
-      //reset the form 
       const form = e.currentTarget;
       form.reset();
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : "Failed to create booking request");
+    } catch (err) {
+      notify.error(
+        err instanceof Error ? err.message : "Failed to create booking request"
+      );
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-black text-white  antialiased">
-      {/* HEADER */}
-      <Header />
-      {/* MAIN */}
-      <main className="flex flex-col items-center py-12 px-4 md:px-10">
-        <div className="max-w-4xl w-full">
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-2">
-            Booking Request
-          </h1>
-          <p className="text-neutral-400 uppercase tracking-widest text-sm mb-12">
-            Black & Grey Specialists • Beirut, Lebanon
-          </p>
+    <div className="flex flex-col items-center px-4 py-12 md:px-10 w-full">
+        <div className="w-full max-w-4xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease }}
+          >
+            <h1 className="mb-2 text-4xl font-black uppercase tracking-tighter text-white md:text-5xl">
+              Booking Request
+            </h1>
+            <p className="mb-12 text-sm uppercase tracking-widest text-[var(--ink-gray-400)]">
+              Black & Grey Specialists • Beirut, Lebanon
+            </p>
+          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05, ease }}
+            className="mb-12 grid grid-cols-1 gap-4 md:grid-cols-3"
+          >
             <Step index={1} label="Design Idea" active />
             <Step index={2} label="Placement" />
             <Step index={3} label="Schedule" />
-          </div>
+          </motion.div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
-            <Card title="1. Your Concept" icon="edit_note">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card title="1. Your Concept" icon="edit_note" index={0}>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <Input label="First Name" name="firstName" placeholder="Jane" />
                 <Input label="Last Name" name="lastName" placeholder="Doe" />
                 <Input label="Phone" name="phone" placeholder="0961790000000" />
                 <Input label="Email" name="email" placeholder="jane@example.com" />
               </div>
-
               <Textarea
                 label="Tattoo Description"
                 name="description"
                 placeholder="I'm looking to get a realistic lion portrait..."
               />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <Select
                   label="Approximate Size"
                   name="size"
@@ -94,12 +99,11 @@ export default function Page() {
                     "Back Piece",
                   ]}
                 />
-
                 <FileUpload label="Reference Images" />
               </div>
             </Card>
 
-            <Card title="2. Body Placement" icon="accessibility_new">
+            <Card title="2. Body Placement" icon="accessibility_new" index={1}>
               <div className="grid grid-cols-2 gap-3">
                 {placements.map((p) => (
                   <Radio key={p} name="placement" label={p} value={p} />
@@ -107,21 +111,20 @@ export default function Page() {
               </div>
             </Card>
 
-            <Card title="3. Preferred Date" icon="calendar_month">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-neutral-900 p-6 border border-neutral-800">
-                  <label className="block text-sm font-bold uppercase tracking-widest text-neutral-400 mb-4">
+            <Card title="3. Preferred Date" icon="calendar_month" index={2}>
+              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                <div className="border border-[var(--ink-gray-800)] bg-[var(--ink-gray-900)] p-6">
+                  <label className="mb-4 block text-sm font-bold uppercase tracking-widest text-[var(--ink-gray-400)]">
                     Select a Date
                   </label>
                   <input
                     type="date"
                     name="date"
-                    className="w-full bg-neutral-100 text-black px-4 py-3 focus:ring-2 focus:ring-white focus:outline-none"
+                    className="w-full bg-[var(--ink-gray-100)] px-4 py-3 text-black outline-none focus:ring-2 focus:ring-white"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-bold uppercase tracking-widest text-neutral-400 mb-4">
+                  <label className="mb-4 block text-sm font-bold uppercase tracking-widest text-[var(--ink-gray-400)]">
                     Available Slots
                   </label>
                   <div className="space-y-3">
@@ -138,21 +141,26 @@ export default function Page() {
               </div>
             </Card>
 
-            <div className="flex justify-end border-t border-neutral-800 pt-6">
-              <button
-                disabled={loading}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, ease }}
+              className="flex justify-end border-t border-[var(--ink-gray-800)] pt-6"
+            >
+              <motion.button
                 type="submit"
-                className="flex items-center gap-3 bg-white text-black px-8 py-4 font-black uppercase tracking-widest hover:bg-neutral-200 transition shadow-lg"
+                disabled={loading}
+                whileHover={loading ? undefined : { scale: 1.02 }}
+                whileTap={loading ? undefined : { scale: 0.98 }}
+                className="flex items-center gap-3 bg-white px-8 py-4 font-black uppercase tracking-widest text-black shadow-lg transition-opacity hover:bg-[var(--ink-gray-200)] disabled:opacity-60"
               >
                 {loading ? "Submitting..." : "Confirm Booking"}
                 <span className="material-symbols-outlined">arrow_forward</span>
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           </form>
         </div>
-      </main>
-
-      <Footer />
     </div>
   );
 }
@@ -169,13 +177,15 @@ interface CardProps {
   title: string;
   icon: string;
   children: ReactNode;
+  index: number;
 }
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
 }
 
-interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface TextareaProps
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
 }
 
@@ -194,50 +204,66 @@ interface RadioProps {
   name: string;
   value: string;
 }
+
 /* ---------------- COMPONENTS ---------------- */
 
 function Step({ index, label, active = false }: StepProps) {
   return (
-    <div
-      className={`flex items-center gap-3 border-b-2 pb-2 ${active ? "border-white" : "border-neutral-700 text-neutral-500"
-        }`}
+    <motion.div
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.4, ease }}
+      className={`flex items-center gap-3 border-b-2 pb-2 ${
+        active
+          ? "border-white"
+          : "border-[var(--ink-gray-700)] text-[var(--ink-gray-500)]"
+      }`}
     >
       <span
-        className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${active ? "bg-white text-black" : "border border-neutral-600"
-          }`}
+        className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
+          active
+            ? "bg-white text-black"
+            : "border border-[var(--ink-gray-600)]"
+        }`}
       >
         {index}
       </span>
-      <span className="uppercase font-bold tracking-wider text-sm">
-        {label}
-      </span>
-    </div>
+      <span className="text-sm font-bold uppercase tracking-wider">{label}</span>
+    </motion.div>
   );
 }
 
-function Card({ title, icon, children }: CardProps) {
+function Card({ title, icon, children, index }: CardProps) {
   return (
-    <div className="bg-neutral-800/50 border border-neutral-800 p-8 rounded-sm shadow-xl">
-      <div className="flex items-center gap-2 mb-6 border-b border-neutral-700 pb-4">
-        <span className="material-symbols-outlined text-neutral-400">
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, delay: index * 0.08, ease }}
+      className="rounded-sm border border-[var(--ink-gray-800)] bg-[var(--ink-gray-800)]/50 p-8 shadow-xl"
+    >
+      <div className="mb-6 flex items-center gap-2 border-b border-[var(--ink-gray-700)] pb-4">
+        <span className="material-symbols-outlined text-[var(--ink-gray-400)]">
           {icon}
         </span>
-        <h3 className="text-xl font-bold uppercase tracking-tight">{title}</h3>
+        <h3 className="text-xl font-bold uppercase tracking-tight text-white">
+          {title}
+        </h3>
       </div>
       <div className="space-y-6">{children}</div>
-    </div>
+    </motion.div>
   );
 }
 
 function Input({ label, ...props }: InputProps) {
   return (
     <div className="space-y-2">
-      <label className="block text-xs uppercase font-bold tracking-widest text-neutral-400">
+      <label className="block text-xs font-bold uppercase tracking-widest text-[var(--ink-gray-400)]">
         {label}
       </label>
       <input
         {...props}
-        className="w-full bg-neutral-100 border-0 text-black px-4 py-3 focus:ring-2 focus:ring-white focus:outline-none"
+        className="w-full bg-[var(--ink-gray-100)] px-4 py-3 text-black outline-none focus:ring-2 focus:ring-white"
       />
     </div>
   );
@@ -246,12 +272,12 @@ function Input({ label, ...props }: InputProps) {
 function Textarea({ label, ...props }: TextareaProps) {
   return (
     <div className="space-y-2">
-      <label className="block text-xs uppercase font-bold tracking-widest text-neutral-400">
+      <label className="block text-xs font-bold uppercase tracking-widest text-[var(--ink-gray-400)]">
         {label}
       </label>
       <textarea
         {...props}
-        className="w-full bg-neutral-100 border-0 text-black px-4 py-3 h-32 resize-none focus:ring-2 focus:ring-white focus:outline-none"
+        className="h-32 w-full resize-none bg-[var(--ink-gray-100)] px-4 py-3 text-black outline-none focus:ring-2 focus:ring-white"
       />
     </div>
   );
@@ -260,12 +286,15 @@ function Textarea({ label, ...props }: TextareaProps) {
 function Select({ label, options, name }: SelectProps) {
   return (
     <div className="space-y-2">
-      <label className="block text-xs uppercase font-bold tracking-widest text-neutral-400">
+      <label className="block text-xs font-bold uppercase tracking-widest text-[var(--ink-gray-400)]">
         {label}
       </label>
-      <select name={name} className="w-full bg-neutral-100 border-0 text-black px-4 py-3 focus:ring-2 focus:ring-white focus:outline-none">
+      <select
+        name={name}
+        className="w-full bg-[var(--ink-gray-100)] px-4 py-3 text-black outline-none focus:ring-2 focus:ring-white"
+      >
         {options.map((o) => (
-          <option key={o}>{o} </option>
+          <option key={o}>{o}</option>
         ))}
       </select>
     </div>
@@ -275,10 +304,10 @@ function Select({ label, options, name }: SelectProps) {
 function FileUpload({ label }: FileUploadProps) {
   return (
     <div className="space-y-2">
-      <label className="block text-xs uppercase font-bold tracking-widest text-neutral-400">
+      <label className="block text-xs font-bold uppercase tracking-widest text-[var(--ink-gray-400)]">
         {label}
       </label>
-      <label className="flex items-center justify-center w-full h-12 bg-neutral-200 hover:bg-white text-neutral-800 cursor-pointer transition-colors border-2 border-dashed border-neutral-400">
+      <label className="flex h-12 w-full cursor-pointer items-center justify-center border-2 border-dashed border-[var(--ink-gray-400)] bg-[var(--ink-gray-200)] text-[var(--ink-gray-800)] transition-colors hover:bg-white">
         <span className="material-symbols-outlined mr-2 text-sm">
           upload_file
         </span>
@@ -293,18 +322,20 @@ function FileUpload({ label }: FileUploadProps) {
 
 function Radio({ label, name, value }: RadioProps) {
   return (
-    <label className="flex items-center gap-3 p-3 bg-neutral-900 border border-neutral-700 cursor-pointer hover:border-white transition-colors group">
+    <motion.label
+      whileHover={{ x: 2 }}
+      className="group flex cursor-pointer items-center gap-3 border border-[var(--ink-gray-700)] bg-[var(--ink-gray-900)] p-3 transition-colors hover:border-white"
+    >
       <input
         type="radio"
         name={name}
         value={value}
         required
-        className="text-black focus:ring-white bg-neutral-800 border-neutral-600"
+        className="border-[var(--ink-gray-600)] bg-[var(--ink-gray-800)] text-black focus:ring-white"
       />
-      <span className="text-sm font-medium uppercase tracking-wide group-hover:text-white text-neutral-400">
+      <span className="text-sm font-medium uppercase tracking-wide text-[var(--ink-gray-400)] group-hover:text-white">
         {label}
       </span>
-    </label>
+    </motion.label>
   );
 }
-
