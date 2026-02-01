@@ -1,8 +1,9 @@
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
-    pending: "bg-transparent text-gray-400 border-gray-700",
+    pending: "bg-transparent text-amber-400 border-amber-600/50",
     confirmed: "bg-white text-black border-white",
     completed: "bg-gray-800 text-gray-300 border-gray-700",
+    cancelled: "bg-transparent text-gray-500 border-gray-700",
   };
 
   return (

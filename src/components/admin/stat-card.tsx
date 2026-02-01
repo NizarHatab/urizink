@@ -1,10 +1,10 @@
-import { IconType } from "react-icons";
+import type { LucideIcon } from "lucide-react";
 
 interface Props {
   label: string;
   value: string;
   delta?: string;
-  icon: IconType;
+  icon: LucideIcon;
 }
 
 export default function StatCard({
@@ -14,23 +14,26 @@ export default function StatCard({
   icon: Icon,
 }: Props) {
   return (
-    <div className="flex flex-col gap-2 rounded-xl p-6 border border-white/10 bg-[#0a0a0a] hover:border-white/30 transition">
-      <div className="flex justify-between items-start">
-        <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">
-          {label}
-        </p>
-        <Icon className="text-gray-600 text-xl" />
-      </div>
-
-      <div className="flex items-baseline gap-2 mt-2">
-        <p className="text-white text-3xl font-bold tracking-tight">
-          {value}
-        </p>
-        {delta && (
-          <p className="text-gray-400 text-xs font-bold">
-            {delta}
-          </p>
-        )}
+    <div className="group relative overflow-hidden rounded-xl border border-[var(--ink-border)] bg-[var(--ink-black)] transition-colors hover:border-[var(--ink-gray-700)]">
+      <div className="p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[var(--ink-gray-500)]">
+              {label}
+            </p>
+            <p className="mt-3 text-3xl font-bold tracking-tight text-white tabular-nums">
+              {value}
+            </p>
+            {delta && (
+              <p className="mt-1.5 text-xs font-medium text-[var(--ink-gray-400)]">
+                {delta}
+              </p>
+            )}
+          </div>
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white/5 text-[var(--ink-gray-500)] transition-colors group-hover:bg-white/10 group-hover:text-white">
+            <Icon className="h-5 w-5" strokeWidth={2} />
+          </div>
+        </div>
       </div>
     </div>
   );

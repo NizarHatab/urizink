@@ -7,4 +7,5 @@ export * from "./bookings";
 export * from "./portfolio";
 export * from "./reviews";
 export * from "./schedule";
+export * from "./artist-availability";
 export * from "./enums";

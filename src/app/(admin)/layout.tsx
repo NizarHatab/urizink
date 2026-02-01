@@ -1,4 +1,4 @@
-import AdminShell from "@/components/admin/adminShell";
+import AdminLayoutWrapper from "@/components/admin/admin-layout-wrapper";
 import "../globals.css";
 
 export const metadata = {
@@ -14,7 +14,7 @@ export default function AdminLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-black text-white min-h-screen antialiased">
-        <AdminShell>{children}</AdminShell>
+        <AdminLayoutWrapper>{children}</AdminLayoutWrapper>
       </body>
     </html>
   );

@@ -21,9 +21,12 @@ export interface Booking {
   size: string;
   artistId?: string;
   scheduledAt?: string;
+  /** Appointment length in minutes; default 60. */
+  durationMinutes?: number;
   status: BookingStatus;
   createdAt: string;
 }
+
 
 export type BookingCreateInput = z.infer<typeof bookingCreateSchema>;
 

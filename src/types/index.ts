@@ -1,6 +1,7 @@
 export * from "./booking";
 export * from "./api";
 export * from "./common";
+export * from "./dashboard";
 export * from "./review";
 export * from "./schedule";
 export * from "./portfolio";

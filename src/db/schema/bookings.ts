@@ -5,6 +5,7 @@ import {
   varchar,
   text,
   timestamp,
+  integer,
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
@@ -19,6 +20,8 @@ export const bookings = pgTable("bookings", {
   size: varchar("size", { length: 50 }).notNull(),
   artistId: uuid("artist_id"),
   scheduledAt: timestamp("scheduled_at"),
+  /** Appointment length in minutes; default 60 for 1-hour slots. */
+  durationMinutes: integer("duration_minutes").default(60),
   status: varchar("status", { length: 20 })
     .$type<"pending" | "confirmed" | "completed" | "cancelled">()
     .default("pending")

@@ -14,26 +14,37 @@ export default function MobileSidebar({
     <>
       {/* Overlay */}
       <div
+        role="button"
+        tabIndex={0}
         onClick={() => setOpen(false)}
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity lg:hidden ${
-          open ? "opacity-100" : "opacity-0 pointer-events-none"
+        onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
+        className={`fixed inset-0 z-40 bg-black/70 backdrop-blur-sm transition-opacity lg:hidden ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
+        aria-hidden={!open}
       />
 
-      {/* Slide Panel */}
+      {/* Panel */}
       <div
-        className={`fixed top-0 left-0 h-full w-[260px] bg-[#0a0a0a] z-50 transform transition-transform duration-300 lg:hidden ${
+        className={`fixed top-0 left-0 z-50 h-full w-56 border-r border-[var(--ink-border)] bg-[var(--ink-black)] transition-transform duration-300 ease-out lg:hidden ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
+        aria-hidden={!open}
       >
-        <div className="flex items-center justify-between px-4 h-14 border-b border-white/10">
-          <span className="text-sm font-bold">URIZINK</span>
-          <button onClick={() => setOpen(false)}>
-            <X className="w-5 h-5" />
+        <div className="flex h-14 items-center justify-end border-b border-[var(--ink-border)] px-4">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="flex h-9 w-9 items-center justify-center rounded text-[var(--ink-gray-400)] transition-colors hover:bg-white/5 hover:text-white"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <Sidebar mobile onNavigate={() => setOpen(false)} />
+        <div className="h-[calc(100vh-3.5rem)] overflow-y-auto">
+          <Sidebar onNavigate={() => setOpen(false)} />
+        </div>
       </div>
     </>
   );

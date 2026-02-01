@@ -1,66 +1,71 @@
-import {
-  FiFileText,
-  FiCheckCircle,
-  FiCreditCard,
-  FiStar,
-  FiMoreHorizontal,
-} from "react-icons/fi";
+import { ClipboardList, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
-const activity = [
-  {
-    icon: FiFileText,
-    text: "M. Rossi booked a Full Sleeve project",
-    time: "2 minutes ago",
-  },
-  {
-    icon: FiCheckCircle,
-    text: "Julia Thorne completed session",
-    time: "1 hour ago",
-  },
-  {
-    icon: FiCreditCard,
-    text: "Deposit received from Leon Black",
-    time: "3 hours ago",
-  },
-  {
-    icon: FiStar,
-    text: "David W. left a 5-star review",
-    time: "Yesterday",
-  },
-];
+export interface ActivityItem {
+  id: string;
+  type: "booking";
+  text: string;
+  time: string;
+}
 
-export default function RecentActivity() {
+export default function RecentActivity({
+  activities = [],
+  loading = false,
+}: {
+  activities?: ActivityItem[];
+  loading?: boolean;
+}) {
   return (
     <div className="lg:col-span-2 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-400">
-          Recent Activity
+        <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--ink-gray-500)]">
+          Recent activity
         </h3>
-        <button className="text-[10px] font-bold uppercase tracking-wider text-gray-500 hover:text-white border-b border-gray-800 hover:border-white transition">
-          View All History
-        </button>
+        <Link
+          href="/admin/bookings"
+          className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-gray-500)] transition-colors hover:text-white"
+        >
+          View all
+        </Link>
       </div>
 
-      <div className="border border-white/10 rounded-xl bg-[#0a0a0a] overflow-hidden divide-y divide-white/5">
-        {activity.map((a, i) => (
-          <div
-            key={i}
-            className="p-5 flex items-center gap-4 hover:bg-white/2 transition"
-          >
-            <div className="size-10 rounded bg-white/5 flex items-center justify-center border border-white/10">
-              <a.icon className="text-lg" />
-            </div>
-
-            <div className="flex-1">
-              <p className="text-sm">{a.text}</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {a.time}
-              </p>
-            </div>
-
-            <FiMoreHorizontal className="text-gray-600 hover:text-white cursor-pointer" />
+      <div className="overflow-hidden rounded-xl border border-[var(--ink-border)] bg-[var(--ink-black)]">
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-sm text-[var(--ink-gray-500)]">
+            Loading…
           </div>
-        ))}
+        ) : activities.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+            <ClipboardList className="h-10 w-10 text-[var(--ink-gray-700)]" />
+            <p className="text-sm text-[var(--ink-gray-500)]">
+              No recent activity
+            </p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-[var(--ink-border)]">
+            {activities.map((a) => (
+              <li key={a.id}>
+                <Link
+                  href="/admin/bookings"
+                  className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-white/[0.03]"
+                >
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white/5">
+                    <ClipboardList className="h-4 w-4 text-[var(--ink-gray-500)]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white">
+                      {a.text}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--ink-gray-500)]">
+                      {a.time}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 flex-shrink-0 text-[var(--ink-gray-600)]" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
