@@ -3,51 +3,82 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { FiStar } from "react-icons/fi";
+import { useEffect, useState } from "react";
+import { getReviews, getReviewStats } from "@/lib/api/reviews";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
-const bars = [
-  { stars: 5, pct: 75 },
-  { stars: 4, pct: 15 },
-  { stars: 3, pct: 5 },
-  { stars: 2, pct: 3 },
-  { stars: 1, pct: 2 },
-];
+function formatRelativeTime(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / 86400000);
+  const diffMonths = Math.floor(diffDays / 30);
 
-const reviews = [
-  {
-    name: "Sarah M.",
-    time: "2 months ago",
-    stars: 5,
-    helpful: 15,
-    notHelpful: 2,
-    text: "UrizInk is an exceptional artist. Their attention to detail and ability to translate my vision into a stunning tattoo exceeded my expectations.",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuC2wQi8IIumu3OOaZgQ4ZcyNdno7knxav8rWsR3WHpIyz4E0xR9TL_LyGHElCH8y8MxFYWAZtTibT58qaXGkq__N78VQfqpkPj7Q7ZWdJDGRbhNb5XYyf80i-tzCaty08kvAKAcP9DqVv9UMRc9dltVcOKAGpU3wJHw2U2OIKP5OrAvn7wxOCm8MWfwwId42EBK2rTGi6sl_XcrNXwaB-JU_ThLWnbA2q1xkYiz8S0Dk4b_Hjx2oUU6bZahIPYQFxzrfCpZMEW9yM3L",
-  },
-  {
-    name: "David L.",
-    time: "3 months ago",
-    stars: 4,
-    helpful: 8,
-    notHelpful: 1,
-    text: "Great experience. The tattoo is well-done and the artist was very professional. Worth the wait.",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBjqarNFPvNeRl_kQF1XnRwZXB1StP2m7OHTwsOrrknozr1agZtV5wXq02qlMQuLzW3tFDNfDImYjZ3LiLNvJ0qbgT_4PWz2K0GXwBuYE8IBPP1ebQTIpnoUK3BJL-c9j83AWH1RBpcXlk7U0Uhu_CAUA4PYJA5YQcWyr6KFqMzg9S-uiZKnTQMHLn6lUkZQ1YprlDtiM1k-nFQsNNxFQsRmQGd7ptD21sRocUKf8TZiM4uEBF3hoF7b3bSmh7TEzC_3sl4lzfu9uRY",
-  },
-  {
-    name: "Emily R.",
-    time: "4 months ago",
-    stars: 5,
-    helpful: 22,
-    notHelpful: 3,
-    text: "Absolutely love my new tattoo! The artist was incredibly talented and made the process enjoyable.",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAQwZF5blgCn3dTqUB4vyJjyQwIpMQneoupFbTbpGgFv8QgP1GzVKfWl5Xbo7ebGkHF_NbDe3DccoIbc_LyL49it3ZmJ9JKl2C2t7rKVXThuQ4E9vyS2AHSvmZnq8AArdW5z1j95n3r4e9k4ZpO6bwzyMw_W7xiddEm5-_anjR8JPKibtel2c-vWe3W3L8FTaKRozbu9w89S-go6bygaJKsdRgIIFTVpAhLWMzTdh3L8l0qt3XE4fx1MdWsfKP1-edqwlcjOrf3PTw9",
-  },
-];
+  if (diffDays < 1) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffMonths < 1) return "Last month";
+  return `${diffMonths} month${diffMonths === 1 ? "" : "s"} ago`;
+}
 
 export default function Page() {
+  const [stats, setStats] = useState<{
+    averageRating: number | null;
+    totalReviews: number;
+    ratingDistribution: Array<{ rating: number; count: number; percent: number }>;
+  } | null>(null);
+  const [reviews, setReviews] = useState<Array<{
+    name: string;
+    time: string;
+    stars: number;
+    helpful: number;
+    notHelpful: number;
+    text: string;
+    image: string;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getReviewStats(), getReviews({ limit: 20 })]).then(
+      ([statsRes, reviewsRes]) => {
+        if (cancelled) return;
+        if (statsRes.success && statsRes.data) {
+          setStats({
+            averageRating: statsRes.data.averageRating,
+            totalReviews: statsRes.data.totalReviews,
+            ratingDistribution: statsRes.data.ratingDistribution,
+          });
+        }
+        if (reviewsRes.success && reviewsRes.data) {
+          setReviews(
+            reviewsRes.data.map((r) => ({
+              name: `${r.firstName} ${r.lastName}`.trim() || "Anonymous",
+              time: formatRelativeTime(r.createdAt),
+              stars: r.rating,
+              helpful: Math.floor(Math.random() * 20) + 5, // Mock helpful count
+              notHelpful: Math.floor(Math.random() * 5), // Mock not helpful count
+              text: r.comment || "No comment provided",
+              image: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                `${r.firstName} ${r.lastName}`.trim() || "Anonymous"
+              )}&background=random`,
+            }))
+          );
+        }
+        setLoading(false);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const bars = stats?.ratingDistribution
+    .sort((a, b) => b.rating - a.rating)
+    .map((r) => ({ stars: r.rating, pct: r.percent })) || [];
+
   return (
     <div className="flex flex-1 justify-center px-5 py-10 md:px-40 w-full">
         <div className="flex w-full max-w-[960px] flex-col">
@@ -81,45 +112,49 @@ export default function Page() {
                 transition={{ duration: 0.5, delay: 0.1, ease }}
                 className="text-6xl font-black text-white"
               >
-                4.8
+                {loading ? "—" : stats?.averageRating?.toFixed(1) ?? "0.0"}
               </motion.p>
-              <Stars count={4} />
+              <Stars count={stats?.averageRating ? Math.round(stats.averageRating) : 0} />
               <p className="mt-2 text-sm text-[var(--ink-gray-500)]">
-                Based on 125 reviews
+                Based on {loading ? "—" : stats?.totalReviews ?? 0} reviews
               </p>
             </div>
 
             <div className="grid min-w-[200px] max-w-[500px] flex-1 grid-cols-[20px_1fr_40px] items-center gap-4">
-              {bars.map((b, i) => (
-                <motion.div
-                  key={b.stars}
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{
-                    duration: 0.4,
-                    delay: 0.15 + i * 0.05,
-                    ease,
-                  }}
-                  className="contents"
-                >
-                  <p className="text-sm text-[var(--ink-gray-400)]">{b.stars}</p>
-                  <div className="h-1.5 overflow-hidden rounded-sm bg-[var(--ink-gray-800)]">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${b.pct}%` }}
-                      transition={{
-                    duration: 0.8,
-                    delay: 0.2 + i * 0.08,
-                    ease,
-                  }}
-                      className="h-full bg-white"
-                    />
-                  </div>
-                  <p className="text-right text-sm text-[var(--ink-gray-500)]">
-                    {b.pct}%
-                  </p>
-                </motion.div>
-              ))}
+              {loading ? (
+                <p className="text-sm text-[var(--ink-gray-500)]">Loading...</p>
+              ) : (
+                bars.map((b, i) => (
+                  <motion.div
+                    key={b.stars}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{
+                      duration: 0.4,
+                      delay: 0.15 + i * 0.05,
+                      ease,
+                    }}
+                    className="contents"
+                  >
+                    <p className="text-sm text-[var(--ink-gray-400)]">{b.stars}</p>
+                    <div className="h-1.5 overflow-hidden rounded-sm bg-[var(--ink-gray-800)]">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${b.pct}%` }}
+                        transition={{
+                          duration: 0.8,
+                          delay: 0.2 + i * 0.08,
+                          ease,
+                        }}
+                        className="h-full bg-white"
+                      />
+                    </div>
+                    <p className="text-right text-sm text-[var(--ink-gray-500)]">
+                      {b.pct}%
+                    </p>
+                  </motion.div>
+                ))
+              )}
             </div>
           </motion.div>
 
@@ -142,21 +177,27 @@ export default function Page() {
 
           {/* REVIEWS */}
           <div className="flex flex-col gap-6 p-4">
-            {reviews.map((r, i) => (
-              <motion.div
-                key={r.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{
-                  duration: 0.5,
-                  delay: i * 0.08,
-                  ease,
-                }}
-              >
-                <ReviewCard {...r} />
-              </motion.div>
-            ))}
+            {loading ? (
+              <p className="text-[var(--ink-gray-500)]">Loading reviews...</p>
+            ) : reviews.length === 0 ? (
+              <p className="text-[var(--ink-gray-500)]">No reviews yet.</p>
+            ) : (
+              reviews.map((r, i) => (
+                <motion.div
+                  key={`${r.name}-${i}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{
+                    duration: 0.5,
+                    delay: i * 0.08,
+                    ease,
+                  }}
+                >
+                  <ReviewCard {...r} />
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
     </div>
