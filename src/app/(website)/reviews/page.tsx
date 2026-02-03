@@ -8,6 +8,16 @@ import { getReviews, getReviewStats } from "@/lib/api/reviews";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
+type ReviewCardProps = {
+  name: string;
+  time: string;
+  stars: number;
+  helpful: number;
+  notHelpful: number;
+  text: string;
+  image: string;
+};
+
 function formatRelativeTime(iso: string): string {
   const date = new Date(iso);
   const now = new Date();
@@ -29,15 +39,7 @@ export default function Page() {
     totalReviews: number;
     ratingDistribution: Array<{ rating: number; count: number; percent: number }>;
   } | null>(null);
-  const [reviews, setReviews] = useState<Array<{
-    name: string;
-    time: string;
-    stars: number;
-    helpful: number;
-    notHelpful: number;
-    text: string;
-    image: string;
-  }>>([]);
+  const [reviews, setReviews] = useState<ReviewCardProps[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -232,7 +234,7 @@ function ReviewCard({
   helpful,
   notHelpful,
   image,
-}: (typeof reviews)[0]) {
+}: ReviewCardProps) {
   return (
     <motion.div
       whileHover={{ borderColor: "rgba(255,255,255,0.4)" }}
