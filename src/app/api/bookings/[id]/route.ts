@@ -3,12 +3,14 @@ import {
   getBookingById,
   updateBookingStatus,
 } from "@/services/booking.service";
+import { requireAdmin } from "@/lib/auth-server";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
+    await requireAdmin(); // Require admin authentication
     const { id } = await params;
     const booking = await getBookingById(id);
     if (!booking) {
@@ -19,6 +21,9 @@ export async function GET(
     }
     return NextResponse.json({ success: true, data: booking });
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
     console.error("BOOKING_BY_ID_ERROR:", error);
     return NextResponse.json(
       { success: false, error: "Internal server error", statusCode: 500 },
@@ -35,6 +40,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requireAdmin(); // Require admin authentication
     const { id } = await params;
     const body = await req.json();
     const status = body?.status as string | undefined;
@@ -56,6 +62,9 @@ export async function PATCH(
     }
     return NextResponse.json({ success: true, data: booking });
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
     const message =
       error instanceof Error ? error.message : "Internal server error";
     if (

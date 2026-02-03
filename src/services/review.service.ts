@@ -4,6 +4,8 @@ import { users } from "@/db/schema/users";
 import { artists } from "@/db/schema/artists";
 import { eq, desc, and, gte, sql } from "drizzle-orm";
 import type { Review } from "@/types/review";
+import { findOrCreateUser } from "./user.service";
+import { getDefaultArtist } from "./schedule.service";
 
 export interface ReviewWithUser extends Review {
   firstName: string;
@@ -136,5 +138,63 @@ export async function getReviewStats(): Promise<ReviewStats> {
     monthlyVolume: monthlyVolumeArray,
     newReviewsThisWeek,
     positiveSentimentPercent,
+  };
+}
+
+export interface CreateReviewInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  rating: number;
+  comment?: string;
+  artistId?: string;
+}
+
+export async function createReview(data: CreateReviewInput): Promise<Review> {
+  // Find or create user
+  const user = await findOrCreateUser({
+    email: data.email,
+    firstName: data.firstName,
+    lastName: data.lastName,
+    phone: data.phone ?? "",
+    isAdmin: false,
+  });
+
+  // Get artistId (use provided one or default)
+  let artistId: string;
+  if (data.artistId) {
+    artistId = data.artistId;
+  } else {
+    const defaultArtist = await getDefaultArtist();
+    if (!defaultArtist) {
+      throw new Error("No artist found. Please specify an artistId.");
+    }
+    artistId = defaultArtist.id;
+  }
+
+  // Validate rating
+  if (data.rating < 1 || data.rating > 5 || !Number.isInteger(data.rating)) {
+    throw new Error("Rating must be an integer between 1 and 5");
+  }
+
+  // Create review
+  const [review] = await db
+    .insert(reviews)
+    .values({
+      userId: user.id,
+      artistId,
+      rating: data.rating,
+      comment: data.comment || null,
+    })
+    .returning();
+
+  return {
+    id: review.id,
+    userId: review.userId,
+    artistId: review.artistId,
+    rating: review.rating,
+    comment: review.comment ?? undefined,
+    createdAt: review.createdAt.toISOString(),
   };
 }

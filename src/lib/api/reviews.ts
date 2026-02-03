@@ -62,3 +62,39 @@ export async function getReviewStats(): Promise<ApiResponse<ReviewStats>> {
     };
   }
 }
+
+export interface CreateReviewInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  rating: number;
+  comment?: string;
+  artistId?: string;
+}
+
+export async function createReview(
+  data: CreateReviewInput
+): Promise<ApiResponse<Review>> {
+  try {
+    const response = await fetch("/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const json: ApiResponse<Review> = await response.json();
+    if (!response.ok || !json.success) {
+      return {
+        success: false,
+        error: json.error ?? "Failed to create review",
+      };
+    }
+    return json;
+  } catch (error) {
+    console.error("REVIEW_CREATE_ERROR:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create review",
+    };
+  }
+}

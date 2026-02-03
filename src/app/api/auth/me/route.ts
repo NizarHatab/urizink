@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyToken } from "@/lib/auth";
-import { authConfig } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth-server";
 
 export async function GET(): Promise<NextResponse> {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(authConfig.cookieName)?.value;
-    if (!token) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json(
         { success: false, error: "Not authenticated", statusCode: 401 },
-        { status: 401 }
-      );
-    }
-
-    const payload = await verifyToken(token);
-    if (!payload || !payload.isAdmin) {
-      return NextResponse.json(
-        { success: false, error: "Invalid or expired token", statusCode: 401 },
         { status: 401 }
       );
     }
@@ -25,9 +14,9 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({
       success: true,
       data: {
-        id: payload.sub,
-        email: payload.email,
-        isAdmin: payload.isAdmin,
+        id: user.id,
+        email: user.email,
+        isAdmin: user.isAdmin,
       },
       statusCode: 200,
     });
