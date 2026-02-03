@@ -3,19 +3,21 @@ import { ApiResponse } from "@/types/api";
 
 export default async function createBookingRequest(
     data: BookingCreateInput
-) {
+) : Promise<ApiResponse<Booking>> {
     try {
         const response = await fetch("/api/bookings", {
             method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
         });
-        if (!response.ok) {
-            throw new Error(await response.json().then(data => data.error));
+        const json: ApiResponse<Booking> = await response.json();
+        if (!response.ok || !json.success) {
+            return {
+                success: false,
+                error: json.error ?? "Failed to create booking request",
+            };
         }
-        return {
-            success: true,
-            data: await response.json(),
-        };
+        return json;
     } catch (error) {
         console.error("BOOKING_ERROR:", error);
         return {
@@ -30,17 +32,21 @@ export async function getBookings(): Promise<BookingResponse> {
         const response = await fetch("/api/bookings", {
             method: "GET",
         });
-        if (!response.ok) {
-            const body = await response.json();
-            throw new Error(body.error ?? "Failed to fetch bookings");
+        const json: BookingResponse = await response.json();
+        if (!response.ok || !json.success) {
+            return {
+                success: false,
+                error: json.error ?? "Failed to fetch bookings",
+                data: undefined,
+            };
         }
-        const json = await response.json();
-        return { success: true, data: json.data };
+        return json;
     } catch (error) {
         console.error("BOOKING_ERROR:", error);
         return {
             success: false,
             error: error instanceof Error ? error.message : "Failed to get bookings",
+            data: undefined,
         };
     }
 }
@@ -48,20 +54,21 @@ export async function getBookings(): Promise<BookingResponse> {
 export async function getBookingById(id: string): Promise<ApiResponse<Booking | null>> {
     try {
         const response = await fetch(`/api/bookings/${id}`);
-        if (response.status === 404) {
-            return { success: true, data: null };
+        const json: ApiResponse<Booking | null> = await response.json();
+        if (!response.ok || !json.success) {
+            return {
+                success: false,
+                error: json.error ?? "Failed to fetch booking",
+                data: null,
+            };
         }
-        if (!response.ok) {
-            const body = await response.json();
-            throw new Error(body.error ?? "Failed to fetch booking");
-        }
-        const json = await response.json();
-        return { success: true, data: json.data ?? null };
+        return json;
     } catch (error) {
         console.error("BOOKING_BY_ID_ERROR:", error);
         return {
             success: false,
             error: error instanceof Error ? error.message : "Failed to get booking",
+            data: null,
         };
     }
 }
@@ -76,20 +83,21 @@ export async function updateBookingStatus(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ status }),
         });
-        if (response.status === 404) {
-            return { success: true, data: null };
+        const json: ApiResponse<Booking | null> = await response.json();
+        if (!response.ok || !json.success) {
+            return {
+                success: false,
+                error: json.error ?? "Failed to update booking",
+                data: null,
+            };
         }
-        if (!response.ok) {
-            const body = await response.json();
-            throw new Error(body.error ?? "Failed to update booking");
-        }
-        const json = await response.json();
-        return { success: true, data: json.data ?? null };
+        return json;
     } catch (error) {
         console.error("BOOKING_UPDATE_ERROR:", error);
         return {
             success: false,
             error: error instanceof Error ? error.message : "Failed to update booking",
+            data: null,
         };
     }
 }

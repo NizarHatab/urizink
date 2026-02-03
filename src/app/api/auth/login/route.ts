@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminCredentials } from "@/services/auth.service";
 import { signToken, authConfig } from "@/lib/auth";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) : Promise<NextResponse> {
   try {
     const body = await req.json();
     const { emailOrPhone, password } = body as {
@@ -10,11 +10,11 @@ export async function POST(req: Request) {
       email?: string;
       password?: string;
     };
-    const loginId = emailOrPhone ?? email;
+    const loginId = emailOrPhone ;
 
     if (!loginId || typeof loginId !== "string" || !password || typeof password !== "string") {
       return NextResponse.json(
-        { error: "Email or phone and password are required" },
+        { success: false, error: "Email or phone and password are required", statusCode: 400 },
         { status: 400 }
       );
     }
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const user = await verifyAdminCredentials(loginId.trim(), password);
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid email/phone or password" },
+        { success: false, error: "Invalid email/phone or password", statusCode: 401 },
         { status: 401 }
       );
     }
@@ -35,12 +35,13 @@ export async function POST(req: Request) {
 
     const response = NextResponse.json({
       success: true,
-      user: {
+      data: {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
       },
+      statusCode: 200,
     });
 
     const isProd = process.env.NODE_ENV === "production";
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("AUTH_LOGIN_ERROR:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { success: false, error: "Internal server error", statusCode: 500 },
       { status: 500 }
     );
   }

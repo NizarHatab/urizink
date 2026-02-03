@@ -118,7 +118,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       (a, b) =>
         new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime()
     );
-// dont get canceled bookings in today schedule
+  // dont get canceled bookings in today schedule
   const todaySchedule = todayBookings
     .filter((b) => b.status !== "cancelled" && b.status !== "confirmed")
     .map((row) => {

@@ -7,18 +7,21 @@ import {
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   try {
     const { id } = await params;
     const booking = await getBookingById(id);
     if (!booking) {
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: "Booking not found", statusCode: 404 },
+        { status: 404 }
+      );
     }
     return NextResponse.json({ success: true, data: booking });
   } catch (error) {
     console.error("BOOKING_BY_ID_ERROR:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { success: false, error: "Internal server error", statusCode: 500 },
       { status: 500 }
     );
   }
@@ -40,13 +43,16 @@ export async function PATCH(
       (status !== "confirmed" && status !== "cancelled")
     ) {
       return NextResponse.json(
-        { error: "Invalid body: status must be 'confirmed' or 'cancelled'" },
+        { success: false, error: "Invalid body: status must be 'confirmed' or 'cancelled'", statusCode: 400 },
         { status: 400 }
       );
     }
     const booking = await updateBookingStatus(id, status as StatusAction);
     if (!booking) {
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: "Booking not found", statusCode: 404 },
+        { status: 404 }
+      );
     }
     return NextResponse.json({ success: true, data: booking });
   } catch (error) {
@@ -56,11 +62,14 @@ export async function PATCH(
       message.includes("Only pending") ||
       message.includes("Only pending or confirmed")
     ) {
-      return NextResponse.json({ error: message }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: message, statusCode: 400 },
+        { status: 400 }
+      );
     }
     console.error("BOOKING_UPDATE_ERROR:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { success: false, error: "Internal server error", statusCode: 500 },
       { status: 500 }
     );
   }

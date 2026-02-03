@@ -14,12 +14,14 @@ export async function getSchedule(
     const params = new URLSearchParams({ weekStart });
     if (artistId) params.set("artistId", artistId);
     const response = await fetch(`/api/schedule?${params}`);
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(body.error ?? "Failed to fetch schedule");
+    const json: ApiResponse<WeekSchedule> = await response.json();
+    if (!response.ok || !json.success) {
+      return {
+        success: false,
+        error: json.error ?? "Failed to fetch schedule",
+      };
     }
-    const json = await response.json();
-    return { success: true, data: json.data };
+    return json;
   } catch (error) {
     console.error("SCHEDULE_GET_ERROR:", error);
     return {
@@ -40,12 +42,14 @@ export async function createScheduleBlock(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ artistId, startTime, endTime }),
     });
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(body.error ?? "Failed to create block");
+    const json: ApiResponse<ScheduleBlock> = await response.json();
+    if (!response.ok || !json.success) {
+      return {
+        success: false,
+        error: json.error ?? "Failed to create block",
+      };
     }
-    const json = await response.json();
-    return { success: true, data: json.data };
+    return json;
   } catch (error) {
     console.error("SCHEDULE_BLOCK_POST_ERROR:", error);
     return {
@@ -63,20 +67,22 @@ export async function deleteScheduleBlock(
     const response = await fetch(`/api/schedule/blocks/${id}`, {
       method: "DELETE",
     });
-    if (response.status === 404) {
-      return { success: true, data: null };
+    const json: ApiResponse<null> = await response.json();
+    if (!response.ok || !json.success) {
+      return {
+        success: false,
+        error: json.error ?? "Failed to delete block",
+        data: null,
+      };
     }
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(body.error ?? "Failed to delete block");
-    }
-    return { success: true, data: null };
+    return json;
   } catch (error) {
     console.error("SCHEDULE_BLOCK_DELETE_ERROR:", error);
     return {
       success: false,
       error:
         error instanceof Error ? error.message : "Failed to delete block",
+      data: null,
     };
   }
 }
@@ -87,12 +93,14 @@ export async function getAvailability(
   try {
     const params = artistId ? `?artistId=${artistId}` : "";
     const response = await fetch(`/api/schedule/availability${params}`);
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(body.error ?? "Failed to fetch availability");
+    const json: ApiResponse<ArtistAvailabilitySlot[]> = await response.json();
+    if (!response.ok || !json.success) {
+      return {
+        success: false,
+        error: json.error ?? "Failed to fetch availability",
+      };
     }
-    const json = await response.json();
-    return { success: true, data: json.data };
+    return json;
   } catch (error) {
     console.error("AVAILABILITY_GET_ERROR:", error);
     return {
@@ -113,12 +121,14 @@ export async function setAvailability(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ artistId, slots }),
     });
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(body.error ?? "Failed to save availability");
+    const json: ApiResponse<ArtistAvailabilitySlot[]> = await response.json();
+    if (!response.ok || !json.success) {
+      return {
+        success: false,
+        error: json.error ?? "Failed to save availability",
+      };
     }
-    const json = await response.json();
-    return { success: true, data: json.data };
+    return json;
   } catch (error) {
     console.error("AVAILABILITY_PUT_ERROR:", error);
     return {
@@ -139,12 +149,14 @@ export async function getAvailableSlots(
     if (artistId) params.set("artistId", artistId);
     if (durationMinutes != null) params.set("durationMinutes", String(durationMinutes));
     const response = await fetch(`/api/schedule/available-slots?${params}`);
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(body.error ?? "Failed to fetch slots");
+    const json: ApiResponse<AvailableSlot[]> = await response.json();
+    if (!response.ok || !json.success) {
+      return {
+        success: false,
+        error: json.error ?? "Failed to fetch slots",
+      };
     }
-    const json = await response.json();
-    return { success: true, data: json.data };
+    return json;
   } catch (error) {
     console.error("AVAILABLE_SLOTS_ERROR:", error);
     return {
@@ -166,12 +178,14 @@ export async function getAvailableDates(
     if (artistId) params.set("artistId", artistId);
     if (weeks != null) params.set("weeks", String(weeks));
     const response = await fetch(`/api/schedule/available-dates?${params}`);
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(body.error ?? "Failed to fetch dates");
+    const json: ApiResponse<string[]> = await response.json();
+    if (!response.ok || !json.success) {
+      return {
+        success: false,
+        error: json.error ?? "Failed to fetch dates",
+      };
     }
-    const json = await response.json();
-    return { success: true, data: json.data };
+    return json;
   } catch (error) {
     console.error("AVAILABLE_DATES_ERROR:", error);
     return {
