@@ -124,9 +124,6 @@ export default function BookingsPage() {
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                   Service
                 </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest hidden md:table-cell">
-                  Artist
-                </th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                   Date & time
                 </th>
@@ -187,14 +184,6 @@ export default function BookingsPage() {
                           <p className="text-[10px] text-gray-500">
                             {b.placement} / {b.size}
                           </p>
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-400 hidden md:table-cell">
-                        <Link
-                          href={`/admin/bookings/${b.id}`}
-                          className="text-gray-400 hover:text-white no-underline"
-                        >
-                          {b.artistId ?? "—"}
                         </Link>
                       </td>
                       <td className="px-6 py-4">

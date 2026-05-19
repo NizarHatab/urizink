@@ -31,3 +31,31 @@ export async function findOrCreateUser(
 
   return user;
 }
+
+export async function findOrCreateUserByEmail(data: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+}) {
+  const [existing] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, data.email.toLowerCase().trim()))
+    .limit(1);
+
+  if (existing) return existing;
+
+  const [user] = await db
+    .insert(users)
+    .values({
+      email: data.email.toLowerCase().trim(),
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
+      phone: data.phone?.trim() || null,
+      isAdmin: false,
+    })
+    .returning();
+
+  return user;
+}

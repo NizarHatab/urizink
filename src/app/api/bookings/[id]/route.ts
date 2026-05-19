@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/require-admin-api";
 import {
   getBookingById,
   updateBookingStatus,
@@ -8,6 +9,9 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
     const booking = await getBookingById(id);
@@ -24,23 +28,26 @@ export async function GET(
   }
 }
 
-const statusSchema = { confirmed: "confirmed", cancelled: "cancelled" } as const;
-type StatusAction = keyof typeof statusSchema;
+const ALLOWED_STATUS = ["confirmed", "cancelled", "completed"] as const;
+type StatusAction = (typeof ALLOWED_STATUS)[number];
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
     const body = await req.json();
     const status = body?.status as string | undefined;
-    if (
-      !status ||
-      (status !== "confirmed" && status !== "cancelled")
-    ) {
+    if (!status || !ALLOWED_STATUS.includes(status as StatusAction)) {
       return NextResponse.json(
-        { error: "Invalid body: status must be 'confirmed' or 'cancelled'" },
+        {
+          error:
+            "Invalid body: status must be 'confirmed', 'cancelled', or 'completed'",
+        },
         { status: 400 }
       );
     }
@@ -54,7 +61,7 @@ export async function PATCH(
       error instanceof Error ? error.message : "Internal server error";
     if (
       message.includes("Only pending") ||
-      message.includes("Only pending or confirmed")
+      message.includes("Only confirmed")
     ) {
       return NextResponse.json({ error: message }, { status: 400 });
     }

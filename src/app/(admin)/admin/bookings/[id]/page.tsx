@@ -1,6 +1,7 @@
 "use client";
 
 import StatusBadge from "@/components/admin/status-badge";
+import { formatDurationLabel } from "@/lib/booking-duration";
 import { getBookingById, updateBookingStatus } from "@/lib/api/bookings";
 import { Booking } from "@/types";
 import Link from "next/link";
@@ -64,9 +65,9 @@ export default function BookingDetailPage() {
   const id = params.id as string;
   const [booking, setBooking] = useState<Booking | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<"confirm" | "cancel" | null>(
-    null
-  );
+  const [actionLoading, setActionLoading] = useState<
+    "confirm" | "cancel" | "complete" | null
+  >(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const handleConfirm = async () => {
@@ -92,6 +93,19 @@ export default function BookingDetailPage() {
       setBooking(res.data);
     } else {
       setActionError(res.error ?? "Failed to cancel booking");
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!id || actionLoading) return;
+    setActionError(null);
+    setActionLoading("complete");
+    const res = await updateBookingStatus(id, "completed");
+    setActionLoading(null);
+    if (res.success && res.data) {
+      setBooking(res.data);
+    } else {
+      setActionError(res.error ?? "Failed to mark booking completed");
     }
   };
 
@@ -145,6 +159,7 @@ export default function BookingDetailPage() {
     .toUpperCase() || "?";
 
   const canConfirm = booking.status === "pending";
+  const canComplete = booking.status === "confirmed";
   const canCancel =
     booking.status === "pending" || booking.status === "confirmed";
 
@@ -160,8 +175,8 @@ export default function BookingDetailPage() {
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <StatusBadge status={booking.status} />
-          {(canConfirm || canCancel) && (
-            <div className="flex items-center gap-2">
+          {(canConfirm || canComplete || canCancel) && (
+            <div className="flex items-center gap-2 flex-wrap">
               {canConfirm && (
                 <button
                   type="button"
@@ -175,6 +190,21 @@ export default function BookingDetailPage() {
                     <Check className="size-4" />
                   )}
                   Accept booking
+                </button>
+              )}
+              {canComplete && (
+                <button
+                  type="button"
+                  onClick={handleComplete}
+                  disabled={!!actionLoading}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 disabled:pointer-events-none transition"
+                >
+                  {actionLoading === "complete" ? (
+                    <span className="size-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Check className="size-4" />
+                  )}
+                  Mark completed
                 </button>
               )}
               {canCancel && (
@@ -239,9 +269,14 @@ export default function BookingDetailPage() {
               <DetailRow label="Description" value={booking.description} />
               <DetailRow label="Placement" value={booking.placement} />
               <DetailRow label="Size" value={booking.size} />
-              {booking.artistId && (
-                <DetailRow label="Artist ID" value={booking.artistId} />
-              )}
+              <DetailRow
+                label="Session length (est.)"
+                value={
+                  booking.durationMinutes
+                    ? formatDurationLabel(booking.durationMinutes)
+                    : "—"
+                }
+              />
             </div>
           </section>
 

@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/require-admin-api";
 import { createBlock } from "@/services/schedule.service";
 
 export async function POST(req: Request) {
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+
   try {
     const body = await req.json();
-    const { artistId, startTime: startTimeStr, endTime: endTimeStr } = body;
+    const { startTime: startTimeStr, endTime: endTimeStr } = body;
 
-    if (!artistId || !startTimeStr || !endTimeStr) {
+    if (!startTimeStr || !endTimeStr) {
       return NextResponse.json(
-        { error: "Missing artistId, startTime, or endTime" },
+        { error: "Missing startTime or endTime" },
         { status: 400 }
       );
     }
@@ -30,7 +34,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const block = await createBlock(artistId, startTime, endTime);
+    const block = await createBlock(startTime, endTime);
     return NextResponse.json({ success: true, data: block });
   } catch (error) {
     console.error("SCHEDULE_BLOCK_POST_ERROR:", error);

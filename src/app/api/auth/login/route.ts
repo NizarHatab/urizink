@@ -5,7 +5,7 @@ import { signToken, authConfig } from "@/lib/auth";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { emailOrPhone, password } = body as {
+    const { emailOrPhone, email, password } = body as {
       emailOrPhone?: string;
       email?: string;
       password?: string;

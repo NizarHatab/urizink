@@ -1,9 +1,10 @@
 export interface PortfolioItem {
   id: string;
-  artistId: string;
   title: string;
   imageUrl: string;
-  style?: string;
-  tags?: string[];
+  style?: string | null;
+  tags?: string[] | null;
   createdAt: string;
+  /** Studio display name (from NEXT_PUBLIC_STUDIO_NAME). */
+  studioName?: string;
 }

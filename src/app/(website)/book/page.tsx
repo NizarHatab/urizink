@@ -3,7 +3,14 @@
 import { ReactNode, useEffect, useState } from "react";
 import { bookingFormToPayload } from "@/lib/serializers/bookings";
 import createBookingRequest from "@/lib/api/bookings";
+import { bookingCreateSchema } from "@/lib/validators/booking";
+import {
+  BOOKING_SIZE_OPTIONS,
+  durationMinutesFromSize,
+  formatDurationLabel,
+} from "@/lib/booking-duration";
 import { getAvailableDates, getAvailableSlots } from "@/lib/api/schedule";
+import { sendBookingToWhatsApp } from "@/lib/whatsapp";
 import { notify } from "@/lib/ui/toast";
 import { motion } from "framer-motion";
 import { PenLine, MapPin, Calendar } from "lucide-react";
@@ -23,15 +30,20 @@ export default function Page() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [availableSlots, setAvailableSlots] = useState<{ start: string; end: string; label?: string }[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [selectedSize, setSelectedSize] = useState(BOOKING_SIZE_OPTIONS[0]);
+  const sessionMinutes = durationMinutesFromSize(selectedSize);
 
   const fromDate = new Date();
   const fromStr = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, "0")}-${String(fromDate.getDate()).padStart(2, "0")}`;
 
   useEffect(() => {
-    getAvailableDates(fromStr, null, 4).then((res) => {
+    setSelectedDate("");
+    setAvailableSlots([]);
+    getAvailableDates(fromStr, 4, sessionMinutes).then((res) => {
       if (res.success && res.data) setAvailableDates(res.data);
+      else setAvailableDates([]);
     });
-  }, [fromStr]);
+  }, [fromStr, sessionMinutes]);
 
   useEffect(() => {
     if (!selectedDate) {
@@ -39,13 +51,13 @@ export default function Page() {
       return;
     }
     setSlotsLoading(true);
-    getAvailableSlots(selectedDate, null, 60)
+    getAvailableSlots(selectedDate, sessionMinutes)
       .then((res) => {
         if (res.success && res.data) setAvailableSlots(res.data);
         else setAvailableSlots([]);
       })
       .finally(() => setSlotsLoading(false));
-  }, [selectedDate]);
+  }, [selectedDate, sessionMinutes]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -53,13 +65,24 @@ export default function Page() {
     setLoading(true);
     try {
       const payload = bookingFormToPayload(new FormData(form));
-      const { success: ok, error: err } = await createBookingRequest(payload);
+      const parsed = bookingCreateSchema.safeParse(payload);
+      if (!parsed.success) {
+        notify.error(
+          parsed.error.issues.map((i) => i.message).join(" ")
+        );
+        setLoading(false);
+        return;
+      }
+      const { success: ok, error: err } = await createBookingRequest(parsed.data);
       if (!ok) {
         notify.error(err || "Failed to create booking request");
         setLoading(false);
         return;
       }
-      notify.success("Booking request submitted successfully");
+      sendBookingToWhatsApp(parsed.data);
+      notify.success(
+        "Request saved — complete the message in WhatsApp to send it to Uriz"
+      );
       form.reset();
       setSelectedDate("");
       setAvailableSlots([]);
@@ -135,20 +158,33 @@ export default function Page() {
               name="description"
               placeholder="Describe your idea: style, subject, reference if any…"
               rows={4}
+              required
+              minLength={10}
+              hint="At least 10 characters — e.g. style, subject, and placement details."
             />
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Select
-                label="Approximate size"
-                name="size"
-                options={[
-                  "Small (up to 5cm)",
-                  "Medium (up to 15cm)",
-                  "Large (up to 25cm)",
-                  "Half Sleeve",
-                  "Full Sleeve",
-                  "Back Piece",
-                ]}
-              />
+              <div className="space-y-2 sm:col-span-2">
+                <label className="block font-display text-xs uppercase tracking-widest text-[var(--ink-gray-500)]">
+                  Approximate size
+                </label>
+                <select
+                  name="size"
+                  required
+                  value={selectedSize}
+                  onChange={(e) => setSelectedSize(e.target.value)}
+                  className={inputClass}
+                >
+                  {BOOKING_SIZE_OPTIONS.map((o) => (
+                    <option key={o} value={o}>
+                      {o} (~{formatDurationLabel(durationMinutesFromSize(o))})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-[var(--ink-gray-500)]">
+                  Longer pieces need a longer open block on the calendar. Uriz
+                  confirms the exact plan after you submit.
+                </p>
+              </div>
               <FileUpload label="Reference images" />
             </div>
           </Card>
@@ -167,67 +203,99 @@ export default function Page() {
 
           {/* SECTION 3: PREFERRED DATE */}
           <Card title="Preferred date" index={2} icon={<Calendar className="h-5 w-5" />}>
-            <p className="mb-4 text-xs text-[var(--ink-gray-500)]">
-              Only days and times when the artist is available are shown.
-            </p>
-            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-              <div className="relative z-10">
-                <label
-                  htmlFor="booking-date"
-                  className="mb-3 block font-display text-xs uppercase tracking-widest text-[var(--ink-gray-400)]"
-                >
-                  Select a date
-                </label>
-                <input
-                  id="booking-date"
-                  type="date"
-                  name="date"
-                  required
-                  min={fromStr}
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full min-h-[52px] cursor-pointer border border-[var(--ink-gray-800)] bg-black px-4 py-3.5 text-white outline-none transition-colors focus:border-white focus:ring-0 [color-scheme:dark]"
-                />
-                {availableDates.length > 0 && (
-                  <p className="mt-2 text-[10px] text-[var(--ink-gray-500)]">
-                    Artist works on selected weekdays only.
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="mb-3 block font-display text-xs uppercase tracking-widest text-[var(--ink-gray-400)]">
-                  Preferred time
-                </label>
-                {!selectedDate ? (
-                  <p className="text-sm text-[var(--ink-gray-500)]">
-                    Select a date first.
-                  </p>
-                ) : slotsLoading ? (
-                  <p className="text-sm text-[var(--ink-gray-500)]">
-                    Loading times…
-                  </p>
-                ) : availableSlots.length === 0 ? (
-                  <p className="text-sm text-[var(--ink-gray-500)]">
-                    No available times on this day. Try another date.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {availableSlots.map((slot) => {
-                      const timeValue = formatSlotTime(slot.start);
-                      const label = slot.label ?? new Date(slot.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                      return (
-                        <Radio
-                          key={slot.start}
-                          name="time"
-                          label={label}
-                          value={timeValue}
-                        />
-                      );
-                    })}
+            {availableDates.length === 0 ? (
+              <>
+                <p className="mb-4 text-sm leading-relaxed text-[var(--ink-gray-400)]">
+                  Online scheduling is not active yet. Mention your preferred days or times in the tattoo
+                  description above, or we’ll contact you to book.
+                </p>
+                <input type="hidden" name="date" value="" />
+                <input type="hidden" name="time" value="" />
+              </>
+            ) : (
+              <>
+                <p className="mb-4 text-xs text-[var(--ink-gray-500)]">
+                  Showing slots for a{" "}
+                  <strong className="text-[var(--ink-gray-300)]">
+                    {formatDurationLabel(sessionMinutes)}
+                  </strong>{" "}
+                  session ({selectedSize}). Start times are on the hour.
+                </p>
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                  <div className="relative z-10">
+                    <label
+                      htmlFor="booking-date"
+                      className="mb-3 block font-display text-xs uppercase tracking-widest text-[var(--ink-gray-400)]"
+                    >
+                      Select a date
+                    </label>
+                    <select
+                      id="booking-date"
+                      name="date"
+                      required
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className={`${inputClass} min-h-[52px] cursor-pointer`}
+                    >
+                      <option value="">Choose a day…</option>
+                      {availableDates.map((d) => (
+                        <option key={d} value={d}>
+                          {new Date(d + "T12:00:00").toLocaleDateString(
+                            undefined,
+                            {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                            }
+                          )}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-2 text-[10px] text-[var(--ink-gray-500)]">
+                      Only days with open slots are listed.
+                    </p>
                   </div>
-                )}
-              </div>
-            </div>
+                  <div>
+                    <label className="mb-3 block font-display text-xs uppercase tracking-widest text-[var(--ink-gray-400)]">
+                      Preferred time
+                    </label>
+                    {!selectedDate ? (
+                      <p className="text-sm text-[var(--ink-gray-500)]">
+                        Select a date first.
+                      </p>
+                    ) : slotsLoading ? (
+                      <p className="text-sm text-[var(--ink-gray-500)]">
+                        Loading times…
+                      </p>
+                    ) : availableSlots.length === 0 ? (
+                      <p className="text-sm text-[var(--ink-gray-500)]">
+                        No available times on this day. Try another date.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {availableSlots.map((slot) => {
+                          const timeValue = formatSlotTime(slot.start);
+                          const label =
+                            slot.label ??
+                            new Date(slot.start).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            });
+                          return (
+                            <Radio
+                              key={slot.start}
+                              name="time"
+                              label={label}
+                              value={timeValue}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </Card>
 
           {/* SUBMIT */}
@@ -249,7 +317,7 @@ export default function Page() {
               <span className="text-lg">→</span>
             </motion.button>
             <p className="mt-4 text-center text-xs text-[var(--ink-gray-500)]">
-              We’ll reply by WhatsApp or email to confirm.
+              You’ll open WhatsApp with your details pre-filled — tap send to reach Uriz.
             </p>
           </motion.div>
         </form>
@@ -328,7 +396,12 @@ function Input({ label, className = "", ...props }: InputProps) {
   );
 }
 
-function Textarea({ label, rows = 4, ...props }: TextareaProps) {
+function Textarea({
+  label,
+  rows = 4,
+  hint,
+  ...props
+}: TextareaProps & { hint?: string }) {
   return (
     <div className="space-y-2">
       <label className="block font-display text-xs uppercase tracking-widest text-[var(--ink-gray-500)]">
@@ -339,6 +412,9 @@ function Textarea({ label, rows = 4, ...props }: TextareaProps) {
         rows={rows}
         className={`${inputClass} resize-none`}
       />
+      {hint ? (
+        <p className="text-[10px] text-[var(--ink-gray-500)]">{hint}</p>
+      ) : null}
     </div>
   );
 }

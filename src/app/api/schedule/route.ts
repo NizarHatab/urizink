@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
-import { getScheduleForWeek, getDefaultArtist } from "@/services/schedule.service";
+import { requireAdminApi } from "@/lib/require-admin-api";
+import { getScheduleForWeek } from "@/services/schedule.service";
 
 export async function GET(req: Request) {
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+
   try {
     const { searchParams } = new URL(req.url);
     const weekStartParam = searchParams.get("weekStart");
-    const artistIdParam = searchParams.get("artistId");
 
     if (!weekStartParam) {
       return NextResponse.json(
@@ -22,18 +25,11 @@ export async function GET(req: Request) {
       );
     }
 
-    // Normalize to Monday
     const day = weekStart.getDay();
     const diff = day === 0 ? -6 : 1 - day;
     weekStart.setDate(weekStart.getDate() + diff);
 
-    let artistId: string | null = artistIdParam;
-    if (!artistId) {
-      const defaultArtist = await getDefaultArtist();
-      artistId = defaultArtist?.id ?? null;
-    }
-
-    const schedule = await getScheduleForWeek(weekStart, artistId);
+    const schedule = await getScheduleForWeek(weekStart);
     return NextResponse.json({ success: true, data: schedule });
   } catch (error) {
     console.error("SCHEDULE_GET_ERROR:", error);

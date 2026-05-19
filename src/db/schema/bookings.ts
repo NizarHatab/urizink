@@ -18,7 +18,6 @@ export const bookings = pgTable("bookings", {
   description: text("description").notNull(),
   placement: varchar("placement", { length: 50 }).notNull(),
   size: varchar("size", { length: 50 }).notNull(),
-  artistId: uuid("artist_id"),
   scheduledAt: timestamp("scheduled_at"),
   /** Appointment length in minutes; default 60 for 1-hour slots. */
   durationMinutes: integer("duration_minutes").default(60),

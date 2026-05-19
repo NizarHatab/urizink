@@ -1,25 +1,16 @@
 import { NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/require-admin-api";
 import {
   getWeeklyAvailability,
   setWeeklyAvailability,
-  getDefaultArtist,
 } from "@/services/schedule.service";
 
-export async function GET(req: Request) {
+export async function GET() {
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+
   try {
-    const { searchParams } = new URL(req.url);
-    let artistId = searchParams.get("artistId");
-    if (!artistId) {
-      const defaultArtist = await getDefaultArtist();
-      artistId = defaultArtist?.id ?? null;
-    }
-    if (!artistId) {
-      return NextResponse.json(
-        { error: "No artist found. Add an artist first." },
-        { status: 404 }
-      );
-    }
-    const availability = await getWeeklyAvailability(artistId);
+    const availability = await getWeeklyAvailability();
     return NextResponse.json({ success: true, data: availability });
   } catch (error) {
     console.error("AVAILABILITY_GET_ERROR:", error);
@@ -31,15 +22,17 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+
   try {
     const body = await req.json();
-    const { artistId, slots } = body as {
-      artistId: string;
+    const { slots } = body as {
       slots: { dayOfWeek: number; startTime: string; endTime: string }[];
     };
-    if (!artistId || !Array.isArray(slots)) {
+    if (!Array.isArray(slots)) {
       return NextResponse.json(
-        { error: "Missing artistId or slots array" },
+        { error: "Missing slots array" },
         { status: 400 }
       );
     }
@@ -57,7 +50,7 @@ export async function PUT(req: Request) {
         startTime: s.startTime,
         endTime: s.endTime,
       }));
-    const availability = await setWeeklyAvailability(artistId, validated);
+    const availability = await setWeeklyAvailability(validated);
     return NextResponse.json({ success: true, data: availability });
   } catch (error) {
     console.error("AVAILABILITY_PUT_ERROR:", error);

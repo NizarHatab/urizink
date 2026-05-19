@@ -22,6 +22,27 @@
       "when": 1769950000000,
       "tag": "0002_artist_weekly_availability",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1770000000000,
+      "tag": "0004_drop_artist_weekly_availability",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1770000000001,
+      "tag": "0003_single_studio_remove_artists",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1770100000000,
+      "tag": "0005_studio_weekly_hours",
+      "breakpoints": true
     }
   ]
 }

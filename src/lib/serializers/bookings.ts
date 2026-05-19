@@ -11,7 +11,7 @@ export function bookingFormToPayload(
     description: formData.get("description") as string,
     placement: formData.get("placement") as string,
     size: formData.get("size") as string,
-    date: formData.get("date") as string,
-    time: formData.get("time") as string,
+    date: (formData.get("date") as string) ?? "",
+    time: (formData.get("time") as string) ?? "",
   };
 }

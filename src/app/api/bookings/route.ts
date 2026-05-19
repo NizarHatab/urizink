@@ -1,8 +1,9 @@
-// app/api/bookings/route.ts
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { requireAdminApi } from "@/lib/require-admin-api";
 import { createBooking, getBookings } from "@/services/booking.service";
 import { bookingCreateSchema } from "@/lib/validators/booking";
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -28,15 +29,17 @@ export async function POST(req: Request) {
     }
 
     console.error("BOOKING_ERROR:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to create booking";
 
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
 
 export async function GET() {
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+
   try {
     const bookings = await getBookings();
     return NextResponse.json(bookings);

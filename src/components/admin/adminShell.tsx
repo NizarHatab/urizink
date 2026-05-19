@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Menu } from "lucide-react";
+import { Toaster } from "sonner";
 import Sidebar from "./sidebar";
 import MobileSidebar from "./mobile-sidebar";
 
@@ -14,6 +15,7 @@ export default function AdminShell({
 
   return (
     <div className="flex h-screen overflow-hidden bg-black">
+      <Toaster richColors position="top-center" />
       {/* Desktop Sidebar */}
       <div className="hidden lg:block lg:w-56 lg:flex-shrink-0">
         <Sidebar />

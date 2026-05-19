@@ -1,35 +1,29 @@
 import { NextResponse } from "next/server";
-import { getAvailableDates, getDefaultArtist } from "@/services/schedule.service";
+import { getAvailableDates } from "@/services/schedule.service";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    let artistId = searchParams.get("artistId");
-    const fromParam = searchParams.get("from");
-    const weeksParam = searchParams.get("weeks");
+    const fromStr = searchParams.get("from");
+    const weeksStr = searchParams.get("weeks");
+    const weeksAhead = weeksStr ? parseInt(weeksStr, 10) : 4;
+    const durationStr = searchParams.get("durationMinutes");
+    const durationMinutes = durationStr
+      ? parseInt(durationStr, 10)
+      : 60;
 
-    if (!artistId) {
-      const defaultArtist = await getDefaultArtist();
-      artistId = defaultArtist?.id ?? null;
-    }
-    if (!artistId) {
-      return NextResponse.json(
-        { error: "No artist found" },
-        { status: 404 }
-      );
-    }
-
-    const fromDate = fromParam
-      ? new Date(fromParam + "T00:00:00")
-      : new Date();
+    const fromDate = fromStr ? new Date(fromStr + "T00:00:00") : new Date();
     if (isNaN(fromDate.getTime())) {
-      return NextResponse.json(
-        { error: "Invalid from date" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid from date" }, { status: 400 });
     }
-    const weeksAhead = weeksParam ? parseInt(weeksParam, 10) : 4;
-    const dates = await getAvailableDates(artistId, fromDate, weeksAhead);
+
+    const dates = await getAvailableDates(
+      fromDate,
+      weeksAhead,
+      Number.isFinite(durationMinutes) && durationMinutes > 0
+        ? durationMinutes
+        : 60
+    );
     return NextResponse.json({ success: true, data: dates });
   } catch (error) {
     console.error("AVAILABLE_DATES_ERROR:", error);

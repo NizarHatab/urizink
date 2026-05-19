@@ -1,5 +1,16 @@
 import { Booking, BookingCreateInput, BookingResponse } from "@/types/booking";
 import { ApiResponse } from "@/types/api";
+import type { ZodIssue } from "zod";
+
+function formatValidationError(json: {
+  error?: string;
+  issues?: ZodIssue[];
+}): string {
+  if (json.issues?.length) {
+    return json.issues.map((i) => i.message).filter(Boolean).join(" ");
+  }
+  return json.error ?? "Failed to create booking";
+}
 
 export default async function createBookingRequest(
     data: BookingCreateInput
@@ -7,14 +18,16 @@ export default async function createBookingRequest(
     try {
         const response = await fetch("/api/bookings", {
             method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
         });
+        const json = await response.json().catch(() => ({}));
         if (!response.ok) {
-            throw new Error(await response.json().then(data => data.error));
+            throw new Error(formatValidationError(json as { error?: string; issues?: ZodIssue[] }));
         }
         return {
             success: true,
-            data: await response.json(),
+            data: json,
         };
     } catch (error) {
         console.error("BOOKING_ERROR:", error);
@@ -29,6 +42,7 @@ export async function getBookings(): Promise<BookingResponse> {
     try {
         const response = await fetch("/api/bookings", {
             method: "GET",
+            credentials: "same-origin",
         });
         if (!response.ok) {
             const body = await response.json();
@@ -47,7 +61,9 @@ export async function getBookings(): Promise<BookingResponse> {
 
 export async function getBookingById(id: string): Promise<ApiResponse<Booking | null>> {
     try {
-        const response = await fetch(`/api/bookings/${id}`);
+        const response = await fetch(`/api/bookings/${id}`, {
+            credentials: "same-origin",
+        });
         if (response.status === 404) {
             return { success: true, data: null };
         }
@@ -68,12 +84,13 @@ export async function getBookingById(id: string): Promise<ApiResponse<Booking | 
 
 export async function updateBookingStatus(
     id: string,
-    status: "confirmed" | "cancelled"
+    status: "confirmed" | "cancelled" | "completed"
 ): Promise<ApiResponse<Booking | null>> {
     try {
         const response = await fetch(`/api/bookings/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
             body: JSON.stringify({ status }),
         });
         if (response.status === 404) {

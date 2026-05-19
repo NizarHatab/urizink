@@ -120,7 +120,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     );
 // dont get canceled bookings in today schedule
   const todaySchedule = todayBookings
-    .filter((b) => b.status !== "cancelled" && b.status !== "confirmed")
+    .filter(
+      (b) =>
+        b.status !== "cancelled" &&
+        b.status !== "completed" &&
+        (b.status === "pending" || b.status === "confirmed")
+    )
     .map((row) => {
       const scheduledAt = row.scheduledAt!.toISOString();
       const d = new Date(row.scheduledAt!);

@@ -1,10 +1,10 @@
 "use client";
 
+import WeeklyHoursEditor from "@/components/admin/schedule/weekly-hours-editor";
 import {
   getSchedule,
   createScheduleBlock,
   deleteScheduleBlock,
-  setAvailability,
 } from "@/lib/api/schedule";
 import type {
   WeekSchedule,
@@ -12,7 +12,7 @@ import type {
   ScheduleBooking,
   ArtistAvailabilitySlot,
 } from "@/types/schedule";
-import { ChevronLeft, ChevronRight, Lock, Loader2, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -97,6 +97,10 @@ function isSlotWithinAvailability(
   availability: ArtistAvailabilitySlot[]
 ): boolean {
   const dayOfWeek = dayIndexToDayOfWeek(dayIndex);
+  if (!availability.length) {
+    if (dayOfWeek === 0 || dayOfWeek === 6) return false;
+    return hour >= DEFAULT_HOUR_START && hour < DEFAULT_HOUR_END;
+  }
   const slot = availability.find((a) => a.dayOfWeek === dayOfWeek);
   if (!slot) return false;
   const startH = parseHour(slot.startTime);
@@ -149,50 +153,17 @@ function buildSlotMap(
   return map;
 }
 
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 export default function SchedulePage() {
   const [weekMonday, setWeekMonday] = useState<Date>(() => getMonday(new Date()));
   const [schedule, setSchedule] = useState<WeekSchedule | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [saveAvailabilityLoading, setSaveAvailabilityLoading] = useState(false);
-  const [availabilitySaveMessage, setAvailabilitySaveMessage] = useState<{
-    type: "success" | "error";
-    text: string;
+  const [rangeMode, setRangeMode] = useState(false);
+  const [rangeStart, setRangeStart] = useState<{
+    dayIndex: number;
+    hour: number;
   } | null>(null);
-  const [editingAvailability, setEditingAvailability] = useState<
-    { dayOfWeek: number; startTime: string; endTime: string; enabled: boolean }[]
-  >(
-    Array.from({ length: 7 }, (_, i) => ({
-      dayOfWeek: i,
-      startTime: "12:00",
-      endTime: "20:00",
-      enabled: i >= 1 && i <= 3,
-    }))
-  );
-
-  const syncEditingFromSchedule = useCallback((s: WeekSchedule | null) => {
-    if (!s) return;
-    const byDay = new Map((s.availability ?? []).map((a) => [a.dayOfWeek, a]));
-    setEditingAvailability((prev) =>
-      prev.map((p) => {
-        const a = byDay.get(p.dayOfWeek);
-        if (!a) return { ...p, enabled: false };
-        const start =
-          a.startTime.length === 5 ? a.startTime : a.startTime.slice(0, 5);
-        const end =
-          a.endTime.length === 5 ? a.endTime : a.endTime.slice(0, 5);
-        return {
-          dayOfWeek: p.dayOfWeek,
-          startTime: start,
-          endTime: end,
-          enabled: true,
-        };
-      })
-    );
-  }, []);
 
   const fetchSchedule = useCallback(async () => {
     const m = weekMonday;
@@ -203,49 +174,14 @@ export default function SchedulePage() {
     setLoading(false);
     if (res.success && res.data) {
       setSchedule(res.data);
-      syncEditingFromSchedule(res.data);
     } else {
       setError(res.error ?? "Failed to load schedule");
     }
-  }, [weekMonday, syncEditingFromSchedule]);
+  }, [weekMonday]);
 
   useEffect(() => {
     fetchSchedule();
   }, [fetchSchedule]);
-
-  const handleSaveAvailability = async () => {
-    setAvailabilitySaveMessage(null);
-    const artistId = schedule?.defaultArtistId;
-    if (!artistId) {
-      setAvailabilitySaveMessage({
-        type: "error",
-        text: "No artist in the database. Add an artist (e.g. Uriz) in the Artists/DB first, then save weekly hours.",
-      });
-      return;
-    }
-    setSaveAvailabilityLoading(true);
-    const slots = editingAvailability
-      .filter((e) => e.enabled)
-      .map((e) => ({
-        dayOfWeek: e.dayOfWeek,
-        startTime: e.startTime,
-        endTime: e.endTime,
-      }));
-    const res = await setAvailability(artistId, slots);
-    setSaveAvailabilityLoading(false);
-    if (res.success && res.data) {
-      setSchedule((prev) =>
-        prev ? { ...prev, availability: res.data! } : null
-      );
-      setAvailabilitySaveMessage({ type: "success", text: "Weekly hours saved." });
-      setTimeout(() => setAvailabilitySaveMessage(null), 3000);
-    } else {
-      setAvailabilitySaveMessage({
-        type: "error",
-        text: res.error ?? "Failed to save availability",
-      });
-    }
-  };
 
   const handlePrevWeek = () => {
     setWeekMonday((prev) => addDays(prev, -7));
@@ -257,23 +193,22 @@ export default function SchedulePage() {
     setWeekMonday(getMonday(new Date()));
   };
 
-  const handleBlockSlot = async (dayIndex: number, hour: number) => {
-    if (!schedule?.defaultArtistId) {
-      setError("No artist set. Add an artist first.");
-      return;
-    }
-    const start = slotStart(weekMonday, dayIndex, hour);
-    const end = new Date(start);
-    end.setHours(end.getHours() + 1);
-    const key = slotKey(dayIndex, hour);
+  const handleBlockRange = async (
+    dayIndex: number,
+    startHour: number,
+    endHourExclusive: number
+  ) => {
+    const start = slotStart(weekMonday, dayIndex, startHour);
+    const end = slotStart(weekMonday, dayIndex, endHourExclusive);
+    const key = `range-${dayIndex}-${startHour}-${endHourExclusive}`;
     setActionLoading(key);
     setError(null);
     const res = await createScheduleBlock(
-      schedule.defaultArtistId,
       start.toISOString(),
       end.toISOString()
     );
     setActionLoading(null);
+    setRangeStart(null);
     if (res.success && res.data) {
       setSchedule((prev) =>
         prev
@@ -286,6 +221,24 @@ export default function SchedulePage() {
     } else {
       setError(res.error ?? "Failed to block time");
     }
+  };
+
+  const handleBlockSlot = async (dayIndex: number, hour: number) => {
+    if (rangeMode) {
+      if (!rangeStart) {
+        setRangeStart({ dayIndex, hour });
+        return;
+      }
+      if (rangeStart.dayIndex !== dayIndex) {
+        setRangeStart({ dayIndex, hour });
+        return;
+      }
+      const startHour = Math.min(rangeStart.hour, hour);
+      const endHourExclusive = Math.max(rangeStart.hour, hour) + 1;
+      await handleBlockRange(dayIndex, startHour, endHourExclusive);
+      return;
+    }
+    await handleBlockRange(dayIndex, hour, hour + 1);
   };
 
   const handleUnblockSlot = async (blockId: string) => {
@@ -352,93 +305,14 @@ export default function SchedulePage() {
 
   return (
     <div className="p-8 space-y-6 max-w-[1600px] mx-auto w-full">
-      {/* Weekly availability */}
-      <div className="rounded-xl border border-white/10 bg-[#0a0a0a] p-6">
-        <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-4">
-          Your weekly hours
-        </h2>
-        <p className="text-xs text-gray-500 mb-4">
-          Set which days you work and the time window. Bookings can only be made within these hours.
-        </p>
-        {availabilitySaveMessage && (
-          <div
-            className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
-              availabilitySaveMessage.type === "success"
-                ? "border-green-500/30 bg-green-500/10 text-green-400"
-                : "border-red-500/30 bg-red-500/10 text-red-400"
-            }`}
-          >
-            {availabilitySaveMessage.text}
-          </div>
-        )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
-          {DAY_NAMES.map((name, i) => (
-            <div
-              key={i}
-              className="flex flex-col gap-2 p-3 rounded-lg border border-white/10 bg-white/[0.02]"
-            >
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={editingAvailability[i]?.enabled ?? false}
-                  onChange={(e) =>
-                    setEditingAvailability((prev) => {
-                      const next = [...prev];
-                      next[i] = { ...next[i]!, enabled: e.target.checked };
-                      return next;
-                    })
-                  }
-                  className="rounded border-white/20 bg-black text-white"
-                />
-                <span className="text-sm font-medium text-white">{name}</span>
-              </label>
-              {editingAvailability[i]?.enabled && (
-                <>
-                  <input
-                    type="time"
-                    value={editingAvailability[i]!.startTime}
-                    onChange={(e) =>
-                      setEditingAvailability((prev) => {
-                        const next = [...prev];
-                        next[i] = { ...next[i]!, startTime: e.target.value };
-                        return next;
-                      })
-                    }
-                    className="rounded border border-white/10 bg-black px-2 py-1.5 text-xs text-white"
-                  />
-                  <input
-                    type="time"
-                    value={editingAvailability[i]!.endTime}
-                    onChange={(e) =>
-                      setEditingAvailability((prev) => {
-                        const next = [...prev];
-                        next[i] = { ...next[i]!, endTime: e.target.value };
-                        return next;
-                      })
-                    }
-                    className="rounded border border-white/10 bg-black px-2 py-1.5 text-xs text-white"
-                  />
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={handleSaveAvailability}
-            disabled={saveAvailabilityLoading}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-black font-semibold text-sm hover:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none"
-          >
-            {saveAvailabilityLoading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Save className="size-4" />
-            )}
-            Save weekly hours
-          </button>
-        </div>
-      </div>
+      {schedule && (
+        <WeeklyHoursEditor
+          availability={schedule.availability}
+          onSaved={(slots) =>
+            setSchedule((prev) => (prev ? { ...prev, availability: slots } : prev))
+          }
+        />
+      )}
 
       {/* Header: legend + week nav */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -461,7 +335,26 @@ export default function SchedulePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setRangeMode((v) => !v);
+              setRangeStart(null);
+            }}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
+              rangeMode
+                ? "border-white bg-white text-black"
+                : "border-white/10 text-gray-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            {rangeMode ? "Range mode on" : "Block range"}
+          </button>
+          {rangeMode && rangeStart && (
+            <span className="text-xs text-gray-500 max-w-[140px]">
+              Pick end hour (same day)
+            </span>
+          )}
           <button
             type="button"
             onClick={handlePrevWeek}
@@ -499,7 +392,7 @@ export default function SchedulePage() {
 
       {schedule && schedule.bookings.length === 0 && schedule.blocks.length === 0 && (
         <p className="text-sm text-gray-500">
-          No bookings this week. Use the Bookings page to create appointments with a date/time; they will appear here. Click an available slot to block time.
+          No bookings this week. Click an available slot to block one hour, or turn on Block range to mark several hours off (e.g. vacation).
         </p>
       )}
 
@@ -556,9 +449,20 @@ export default function SchedulePage() {
                       <button
                         type="button"
                         onClick={() => handleBlockSlot(dayIndex, hour)}
-                        disabled={!schedule?.defaultArtistId || !!actionLoading}
-                        className="w-full h-full min-h-[56px] rounded-lg bg-white/5 hover:bg-white/10 border border-dashed border-white/10 flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-white transition disabled:opacity-50 disabled:pointer-events-none"
-                        title="Click to block this hour"
+                        disabled={!!actionLoading}
+                        className={`w-full h-full min-h-[56px] rounded-lg border border-dashed flex flex-col items-center justify-center gap-0.5 transition disabled:opacity-50 disabled:pointer-events-none ${
+                          rangeStart?.dayIndex === dayIndex &&
+                          rangeStart.hour === hour
+                            ? "bg-amber-500/20 border-amber-500/50 text-amber-100"
+                            : "bg-white/5 hover:bg-white/10 border-white/10 text-gray-500 hover:text-white"
+                        }`}
+                        title={
+                          rangeMode
+                            ? rangeStart
+                              ? "Click end hour to block range"
+                              : "Click start hour for range"
+                            : "Click to block this hour"
+                        }
                       >
                         {isActionLoading ? (
                           <Loader2 className="size-4 animate-spin" />

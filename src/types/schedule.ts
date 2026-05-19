@@ -1,9 +1,8 @@
 export type ScheduleStatus = "available" | "booked" | "blocked";
 
-/** One day's working window in the artist's weekly schedule (e.g. Mon 12:00–20:00). */
+/** One day's working window in the weekly schedule (e.g. Mon 12:00–20:00). */
 export interface ArtistAvailabilitySlot {
   id: string;
-  artistId: string;
   /** 0 = Sunday, 1 = Monday, ... 6 = Saturday */
   dayOfWeek: number;
   /** "HH:mm" or "HH:mm:ss" */
@@ -14,7 +13,6 @@ export interface ArtistAvailabilitySlot {
 
 export interface ScheduleBlock {
   id: string;
-  artistId: string;
   startTime: string;
   endTime: string;
   status: ScheduleStatus;
@@ -37,12 +35,10 @@ export interface ScheduleBooking {
 export interface WeekSchedule {
   weekStart: string;
   weekEnd: string;
-  /** Artist's recurring weekly hours (which days/hours they work). */
+  /** Recurring weekly hours (which days/hours the studio works). */
   availability: ArtistAvailabilitySlot[];
   blocks: ScheduleBlock[];
   bookings: ScheduleBooking[];
-  /** First artist (e.g. Uriz) or null if none. */
-  defaultArtistId: string | null;
 }
 
 /** Available slot for booking (start time in ISO, or date + time string). */

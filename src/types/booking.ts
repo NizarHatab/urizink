@@ -19,7 +19,6 @@ export interface Booking {
   description: string;
   placement: string;
   size: string;
-  artistId?: string;
   scheduledAt?: string;
   /** Appointment length in minutes; default 60. */
   durationMinutes?: number;

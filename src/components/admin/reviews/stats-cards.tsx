@@ -1,14 +1,47 @@
-const stats = [
-  { label: "Average Score", value: "4.92", sub: "+0.2 from last month" },
-  { label: "Total Reviews", value: "1,284", sub: "84 new this week" },
-  { label: "Sentiment", value: "98%", sub: "Positive feedback" },
-  { label: "Response Rate", value: "100%", sub: "0 pending replies" },
-];
+import type { ReviewStats } from "@/types/review";
 
-export default function StatsCards() {
+type Props = {
+  stats: ReviewStats;
+};
+
+export default function StatsCards({ stats }: Props) {
+  const avg =
+    stats.averageRating !== null ? stats.averageRating.toFixed(2) : "—";
+  const positive =
+    stats.positivePercent !== null ? `${stats.positivePercent}%` : "—";
+
+  const cards = [
+    {
+      label: "Average Score",
+      value: avg,
+      sub:
+        stats.totalCount > 0
+          ? `From ${stats.totalCount} review${stats.totalCount === 1 ? "" : "s"}`
+          : "No reviews yet",
+    },
+    {
+      label: "Total Reviews",
+      value: String(stats.totalCount),
+      sub:
+        stats.newThisWeek > 0
+          ? `${stats.newThisWeek} new this week`
+          : "No new reviews this week",
+    },
+    {
+      label: "Positive (4–5★)",
+      value: positive,
+      sub: "Share of 4 and 5 star ratings",
+    },
+    {
+      label: "This week",
+      value: String(stats.newThisWeek),
+      sub: "Reviews in the last 7 days",
+    },
+  ];
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-      {stats.map((s) => (
+      {cards.map((s) => (
         <div
           key={s.label}
           className="flex flex-col gap-1 rounded-xl p-6 border border-white/10 bg-[#0a0a0a]"

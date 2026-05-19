@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/require-admin-api";
 import { deleteBlock } from "@/services/schedule.service";
 
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAdminApi();
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await params;
     const deleted = await deleteBlock(id);

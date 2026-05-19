@@ -1,10 +1,16 @@
 import { db } from "@/db";
-import { artistWeeklyAvailability } from "@/db/schema/artist-availability";
-import { artists } from "@/db/schema/artists";
 import { bookings } from "@/db/schema/bookings";
 import { schedule } from "@/db/schema/schedule";
+import { studioWeeklyHours } from "@/db/schema/studio-weekly-hours";
 import { users } from "@/db/schema/users";
-import { eq, and, gte, lt, gt, or, isNull } from "drizzle-orm";
+import {
+  DEFAULT_WEEKLY_HOURS,
+  formatDateYmd,
+  parseHour,
+  parseMinute,
+  rangesOverlap,
+} from "@/lib/schedule-helpers";
+import { eq, and, gte, lt, gt } from "drizzle-orm";
 import type {
   ArtistAvailabilitySlot,
   ScheduleBlock,
@@ -13,129 +19,245 @@ import type {
   AvailableSlot,
 } from "@/types/schedule";
 
-/** Get the first artist (e.g. Uriz) for single-artist studio. */
-export async function getDefaultArtist(): Promise<{
+const SLOT_STEP_MINUTES = 30;
+
+async function ensureDefaultWeeklyHours(): Promise<void> {
+  const existing = await db.select({ id: studioWeeklyHours.id }).from(studioWeeklyHours).limit(1);
+  if (existing.length > 0) return;
+  await db.insert(studioWeeklyHours).values(
+    DEFAULT_WEEKLY_HOURS.map((row) => ({
+      dayOfWeek: row.dayOfWeek,
+      startTime: row.startTime,
+      endTime: row.endTime,
+    }))
+  );
+}
+
+function rowToSlot(row: {
   id: string;
-  name: string;
-} | null> {
-  const [row] = await db
-    .select({ id: artists.id, name: artists.name })
-    .from(artists)
-    .limit(1);
-  return row ? { id: row.id, name: row.name } : null;
-}
-
-/** Normalize time string to HH:mm for comparison. */
-function timeToHHmm(t: string): string {
-  if (!t) return "00:00";
-  const part = t.split("T")[1] ?? t;
-  const [h, m] = part.split(":");
-  return `${h!.padStart(2, "0")}:${(m ?? "00").padStart(2, "0")}`;
-}
-
-/** Get artist's recurring weekly availability (which days/hours they work). */
-export async function getWeeklyAvailability(
-  artistId: string
-): Promise<ArtistAvailabilitySlot[]> {
-  const rows = await db
-    .select({
-      id: artistWeeklyAvailability.id,
-      artistId: artistWeeklyAvailability.artistId,
-      dayOfWeek: artistWeeklyAvailability.dayOfWeek,
-      startTime: artistWeeklyAvailability.startTime,
-      endTime: artistWeeklyAvailability.endTime,
-      createdAt: artistWeeklyAvailability.createdAt,
-    })
-    .from(artistWeeklyAvailability)
-    .where(eq(artistWeeklyAvailability.artistId, artistId))
-    .orderBy(artistWeeklyAvailability.dayOfWeek);
-
-  return rows.map((row) => ({
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  createdAt: Date;
+}): ArtistAvailabilitySlot {
+  return {
     id: row.id,
-    artistId: row.artistId,
-    dayOfWeek: row.dayOfWeek ?? 0,
-    startTime: typeof row.startTime === "string" ? timeToHHmm(row.startTime) : "09:00",
-    endTime: typeof row.endTime === "string" ? timeToHHmm(row.endTime) : "18:00",
+    dayOfWeek: row.dayOfWeek,
+    startTime: row.startTime.slice(0, 5),
+    endTime: row.endTime.slice(0, 5),
     createdAt: row.createdAt.toISOString(),
-  }));
+  };
 }
 
-/** Set artist's weekly availability. Replaces all existing slots for that artist. */
+export async function getWeeklyAvailability(): Promise<ArtistAvailabilitySlot[]> {
+  await ensureDefaultWeeklyHours();
+  const rows = await db
+    .select()
+    .from(studioWeeklyHours)
+    .orderBy(studioWeeklyHours.dayOfWeek);
+  return rows.map(rowToSlot);
+}
+
 export async function setWeeklyAvailability(
-  artistId: string,
   slots: { dayOfWeek: number; startTime: string; endTime: string }[]
 ): Promise<ArtistAvailabilitySlot[]> {
-  await db
-    .delete(artistWeeklyAvailability)
-    .where(eq(artistWeeklyAvailability.artistId, artistId));
-
-  if (slots.length === 0) {
-    return [];
+  await db.delete(studioWeeklyHours);
+  if (slots.length > 0) {
+    await db.insert(studioWeeklyHours).values(
+      slots.map((s) => ({
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime.slice(0, 5),
+        endTime: s.endTime.slice(0, 5),
+      }))
+    );
   }
-
-  const toInsert = slots.map((s) => ({
-    artistId,
-    dayOfWeek: s.dayOfWeek,
-    startTime: s.startTime.length === 5 ? `${s.startTime}:00` : s.startTime,
-    endTime: s.endTime.length === 5 ? `${s.endTime}:00` : s.endTime,
-  }));
-
-  const inserted = await db
-    .insert(artistWeeklyAvailability)
-    .values(toInsert)
-    .returning();
-
-  return inserted.map((row) => ({
-    id: row.id,
-    artistId: row.artistId,
-    dayOfWeek: row.dayOfWeek ?? 0,
-    startTime: typeof row.startTime === "string" ? timeToHHmm(row.startTime) : "09:00",
-    endTime: typeof row.endTime === "string" ? timeToHHmm(row.endTime) : "18:00",
-    createdAt: row.createdAt.toISOString(),
-  }));
+  return getWeeklyAvailability();
 }
 
-/**
- * Get all data needed for the weekly calendar: availability, blocks, and bookings.
- */
+type Interval = { start: number; end: number };
+
+async function getBusyIntervalsForDay(
+  dayStart: Date,
+  dayEnd: Date
+): Promise<Interval[]> {
+  const blockRows = await db
+    .select({
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+    })
+    .from(schedule)
+    .where(
+      and(
+        eq(schedule.status, "blocked"),
+        lt(schedule.startTime, dayEnd),
+        gt(schedule.endTime, dayStart)
+      )
+    );
+
+  const bookingRows = await db
+    .select({
+      scheduledAt: bookings.scheduledAt,
+      durationMinutes: bookings.durationMinutes,
+      status: bookings.status,
+    })
+    .from(bookings)
+    .where(
+      and(
+        gte(bookings.scheduledAt, dayStart),
+        lt(bookings.scheduledAt, dayEnd)
+      )
+    );
+
+  const busy: Interval[] = [];
+
+  for (const b of blockRows) {
+    busy.push({
+      start: b.startTime.getTime(),
+      end: b.endTime.getTime(),
+    });
+  }
+
+  for (const b of bookingRows) {
+    if (b.status === "cancelled" || !b.scheduledAt) continue;
+    const start = b.scheduledAt.getTime();
+    const duration = (b.durationMinutes ?? 60) * 60 * 1000;
+    busy.push({ start, end: start + duration });
+  }
+
+  return busy;
+}
+
+function isSlotFree(
+  slotStart: number,
+  slotEnd: number,
+  busy: Interval[]
+): boolean {
+  return !busy.some((b) => rangesOverlap(slotStart, slotEnd, b.start, b.end));
+}
+
+export async function getAvailableSlots(
+  dateStr?: string,
+  durationMinutes = 60
+): Promise<AvailableSlot[]> {
+  if (!dateStr) return [];
+
+  const parts = dateStr.split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return [];
+
+  const [y, m, d] = parts;
+  const dayDate = new Date(y, m - 1, d);
+  const dayOfWeek = dayDate.getDay();
+
+  const availability = await getWeeklyAvailability();
+  const dayHours = availability.find((a) => a.dayOfWeek === dayOfWeek);
+  if (!dayHours) return [];
+
+  const startH = parseHour(dayHours.startTime);
+  const startM = parseMinute(dayHours.startTime);
+  const endH = parseHour(dayHours.endTime);
+  const endM = parseMinute(dayHours.endTime);
+
+  const windowStart = new Date(y, m - 1, d, startH, startM, 0, 0);
+  const windowEnd = new Date(y, m - 1, d, endH, endM, 0, 0);
+  if (windowEnd <= windowStart) return [];
+
+  const dayStart = new Date(y, m - 1, d, 0, 0, 0, 0);
+  const dayEnd = new Date(y, m - 1, d, 23, 59, 59, 999);
+  const busy = await getBusyIntervalsForDay(dayStart, dayEnd);
+
+  const now = Date.now();
+  const stepMs = SLOT_STEP_MINUTES * 60 * 1000;
+  const durationMs = durationMinutes * 60 * 1000;
+  const slots: AvailableSlot[] = [];
+
+  for (
+    let t = windowStart.getTime();
+    t + durationMs <= windowEnd.getTime();
+    t += stepMs
+  ) {
+    if (t < now) continue;
+    const slotEnd = t + durationMs;
+    if (!isSlotFree(t, slotEnd, busy)) continue;
+
+    const startDate = new Date(t);
+    const endDate = new Date(slotEnd);
+    slots.push({
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
+      label: startDate.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    });
+  }
+
+  return slots;
+}
+
+export async function getAvailableDates(
+  fromDate?: Date,
+  weeksAhead = 4,
+  durationMinutes = 60
+): Promise<string[]> {
+  const start = fromDate ? new Date(fromDate) : new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const dates: string[] = [];
+  const totalDays = Math.max(1, weeksAhead) * 7;
+
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    const ymd = formatDateYmd(d);
+    const slots = await getAvailableSlots(ymd, durationMinutes);
+    if (slots.length > 0) dates.push(ymd);
+  }
+
+  return dates;
+}
+
+export async function isSlotAvailable(
+  dateStr: string,
+  timeHHmm: string,
+  durationMinutes = 60
+): Promise<boolean> {
+  const slots = await getAvailableSlots(dateStr, durationMinutes);
+  const normalized = timeHHmm.slice(0, 5);
+  return slots.some((s) => {
+    const d = new Date(s.start);
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    return `${hh}:${mm}` === normalized;
+  });
+}
+
 export async function getScheduleForWeek(
-  weekStart: Date,
-  artistId: string | null
+  weekStart: Date
 ): Promise<WeekSchedule> {
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 7);
 
-  const defaultArtist = await getDefaultArtist();
-  const availability: ArtistAvailabilitySlot[] =
-    artistId != null
-      ? await getWeeklyAvailability(artistId)
-      : [];
+  const availability = await getWeeklyAvailability();
 
-  const blockRows =
-    artistId != null
-      ? await db
-          .select({
-            id: schedule.id,
-            artistId: schedule.artistId,
-            startTime: schedule.startTime,
-            endTime: schedule.endTime,
-            status: schedule.status,
-            createdAt: schedule.createdAt,
-          })
-          .from(schedule)
-          .where(
-            and(
-              eq(schedule.artistId, artistId),
-              eq(schedule.status, "blocked"),
-              lt(schedule.startTime, weekEnd),
-              gt(schedule.endTime, weekStart)
-            )
-          )
-      : [];
+  const blockRows = await db
+    .select({
+      id: schedule.id,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      status: schedule.status,
+      createdAt: schedule.createdAt,
+    })
+    .from(schedule)
+    .where(
+      and(
+        eq(schedule.status, "blocked"),
+        lt(schedule.startTime, weekEnd),
+        gt(schedule.endTime, weekStart)
+      )
+    );
 
   const blocks: ScheduleBlock[] = blockRows.map((row) => ({
     id: row.id,
-    artistId: row.artistId,
     startTime: row.startTime.toISOString(),
     endTime: row.endTime.toISOString(),
     status: row.status,
@@ -151,7 +273,6 @@ export async function getScheduleForWeek(
       placement: bookings.placement,
       size: bookings.size,
       status: bookings.status,
-      artistId: bookings.artistId,
       firstName: users.firstName,
       lastName: users.lastName,
     })
@@ -164,25 +285,19 @@ export async function getScheduleForWeek(
       )
     );
 
-  const filtered = bookingRows.filter((row) => {
-    if (row.status === "cancelled") return false;
-    if (!row.scheduledAt) return false;
-    if (artistId != null && row.artistId != null && row.artistId !== artistId)
-      return false;
-    return true;
-  });
-
-  const bookingsForWeek: ScheduleBooking[] = filtered.map((row) => ({
-    id: row.id,
-    scheduledAt: row.scheduledAt!.toISOString(),
-    durationMinutes: row.durationMinutes ?? 60,
-    firstName: row.firstName ?? "",
-    lastName: row.lastName ?? "",
-    description: row.description,
-    placement: row.placement,
-    size: row.size,
-    status: row.status,
-  }));
+  const bookingsForWeek: ScheduleBooking[] = bookingRows
+    .filter((row) => row.status !== "cancelled" && row.scheduledAt)
+    .map((row) => ({
+      id: row.id,
+      scheduledAt: row.scheduledAt!.toISOString(),
+      durationMinutes: row.durationMinutes ?? 60,
+      firstName: row.firstName ?? "",
+      lastName: row.lastName ?? "",
+      description: row.description,
+      placement: row.placement,
+      size: row.size,
+      status: row.status,
+    }));
 
   return {
     weekStart: weekStart.toISOString(),
@@ -190,149 +305,16 @@ export async function getScheduleForWeek(
     availability,
     blocks,
     bookings: bookingsForWeek,
-    defaultArtistId: defaultArtist?.id ?? null,
   };
 }
 
-/**
- * Get available time slots for a given date, respecting artist's working hours,
- * blocks, existing bookings, and appointment duration.
- */
-export async function getAvailableSlots(
-  artistId: string,
-  dateStr: string,
-  durationMinutes: number = 60
-): Promise<AvailableSlot[]> {
-  const date = new Date(dateStr + "T00:00:00");
-  if (isNaN(date.getTime())) return [];
-
-  const dayOfWeek = date.getDay();
-  const availability = await getWeeklyAvailability(artistId);
-  const dayAvailability = availability.find((a) => a.dayOfWeek === dayOfWeek);
-  if (!dayAvailability) return [];
-
-  const [startH, startM] = dayAvailability.startTime.split(":").map(Number);
-  const [endH, endM] = dayAvailability.endTime.split(":").map(Number);
-  const windowStart = new Date(date);
-  windowStart.setHours(startH, startM ?? 0, 0, 0);
-  const windowEnd = new Date(date);
-  windowEnd.setHours(endH, endM ?? 0, 0, 0);
-
-  const dayEnd = new Date(date);
-  dayEnd.setHours(23, 59, 59, 999);
-
-  const blocks = await db
-    .select({ startTime: schedule.startTime, endTime: schedule.endTime })
-    .from(schedule)
-    .where(
-      and(
-        eq(schedule.artistId, artistId),
-        eq(schedule.status, "blocked"),
-        lt(schedule.startTime, dayEnd),
-        gt(schedule.endTime, date)
-      )
-    );
-
-  const bookingsThatDay = await db
-    .select({
-      scheduledAt: bookings.scheduledAt,
-      durationMinutes: bookings.durationMinutes,
-      status: bookings.status,
-    })
-    .from(bookings)
-    .where(
-      and(
-        or(eq(bookings.artistId, artistId), isNull(bookings.artistId)),
-        gte(bookings.scheduledAt, date),
-        lt(bookings.scheduledAt, dayEnd)
-      )
-    );
-
-  const allBookedRanges = bookingsThatDay
-    .filter((b) => b.scheduledAt && b.status !== "cancelled")
-    .map((b) => {
-      const start = new Date(b.scheduledAt!);
-      const end = new Date(
-        start.getTime() + (b.durationMinutes ?? 60) * 60 * 1000
-      );
-      return { start, end };
-    });
-
-  const blockedRanges = blocks.map((b) => ({
-    start: new Date(b.startTime),
-    end: new Date(b.endTime),
-  }));
-
-  const slotDurationMs = durationMinutes * 60 * 1000;
-  const slots: AvailableSlot[] = [];
-  let slotStart = new Date(windowStart);
-
-  while (slotStart.getTime() + slotDurationMs <= windowEnd.getTime()) {
-    const slotEnd = new Date(slotStart.getTime() + slotDurationMs);
-    const overlapsBlock = blockedRanges.some(
-      (b) => slotStart < b.end && slotEnd > b.start
-    );
-    const overlapsBooking = allBookedRanges.some(
-      (b) => slotStart < b.end && slotEnd > b.start
-    );
-    if (!overlapsBlock && !overlapsBooking) {
-      const label = slotStart.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      slots.push({
-        start: slotStart.toISOString(),
-        end: slotEnd.toISOString(),
-        label,
-      });
-    }
-    slotStart = new Date(slotStart.getTime() + 60 * 60 * 1000);
-  }
-
-  return slots;
-}
-
-/**
- * Get list of dates that are bookable (artist works that day) within the next N weeks.
- */
-export async function getAvailableDates(
-  artistId: string,
-  fromDate: Date,
-  weeksAhead: number = 4
-): Promise<string[]> {
-  const availability = await getWeeklyAvailability(artistId);
-  if (availability.length === 0) return [];
-
-  const workingDays = new Set(availability.map((a) => a.dayOfWeek));
-  const dates: string[] = [];
-  const end = new Date(fromDate);
-  end.setDate(end.getDate() + weeksAhead * 7);
-
-  const cursor = new Date(fromDate);
-  cursor.setHours(0, 0, 0, 0);
-
-  while (cursor < end) {
-    if (workingDays.has(cursor.getDay())) {
-      dates.push(
-        `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`
-      );
-    }
-    cursor.setDate(cursor.getDate() + 1);
-  }
-
-  return dates;
-}
-
-/** Create a blocked time slot for the artist. */
 export async function createBlock(
-  artistId: string,
   startTime: Date,
   endTime: Date
 ): Promise<ScheduleBlock> {
   const [row] = await db
     .insert(schedule)
     .values({
-      artistId,
       startTime,
       endTime,
       status: "blocked",
@@ -343,7 +325,6 @@ export async function createBlock(
 
   return {
     id: row.id,
-    artistId: row.artistId,
     startTime: row.startTime.toISOString(),
     endTime: row.endTime.toISOString(),
     status: row.status,
@@ -351,7 +332,6 @@ export async function createBlock(
   };
 }
 
-/** Remove a blocked time slot. */
 export async function deleteBlock(id: string): Promise<boolean> {
   const result = await db.delete(schedule).where(eq(schedule.id, id));
   return (result.rowCount ?? 0) > 0;
