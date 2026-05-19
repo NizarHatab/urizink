@@ -99,6 +99,17 @@ export async function getReviewsPayload(): Promise<ReviewsPayload> {
   return { reviews: reviewList, stats };
 }
 
+export async function getReviewStats(): Promise<ReviewStats> {
+  const rows = await db
+    .select({
+      rating: reviews.rating,
+      createdAt: reviews.createdAt,
+    })
+    .from(reviews);
+
+  return computeStats(rows);
+}
+
 export async function createReview(
   data: ReviewCreateInput
 ): Promise<ReviewListItem> {
