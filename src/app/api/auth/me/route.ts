@@ -1,32 +1,29 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { verifyToken } from "@/lib/auth";
-import { authConfig } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth-server";
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(authConfig.cookieName)?.value;
-    if (!token) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    }
-
-    const payload = await verifyToken(token);
-    if (!payload || !payload.isAdmin) {
-      return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "Not authenticated", statusCode: 401 },
+        { status: 401 }
+      );
     }
 
     return NextResponse.json({
-      user: {
-        id: payload.sub,
-        email: payload.email,
-        isAdmin: payload.isAdmin,
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        isAdmin: user.isAdmin,
       },
+      statusCode: 200,
     });
   } catch (error) {
     console.error("AUTH_ME_ERROR:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { success: false, error: "Internal server error", statusCode: 500 },
       { status: 500 }
     );
   }

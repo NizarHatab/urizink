@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth";
 
-export async function POST() {
+export async function POST() : Promise<NextResponse> {
   const response = NextResponse.json({ success: true });
   response.cookies.set(authConfig.cookieName, "", {
     httpOnly: true,
