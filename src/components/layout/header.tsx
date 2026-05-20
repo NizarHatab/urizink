@@ -13,21 +13,21 @@ export default function Header() {
   const selectedNav = pathname;
   return (
     <header className="sticky top-0 z-50 bg-black border-b border-neutral-800">
-      <div className="flex items-center justify-between px-5 md:px-10 h-16">
-        {/* LOGO */}
+      <div className="flex h-20 items-center justify-between px-3 sm:px-5 md:h-[4.25rem] md:px-10 lg:h-[5.5rem] lg:px-12 xl:h-24">
         <Link
           href="/"
-          className="flex items-center gap-2.5 sm:gap-3"
+          aria-label="UrizInk home"
+          className="flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-90 sm:gap-3 lg:gap-4 xl:gap-5"
         >
           <Image
             src="/images/logo.PNG"
             alt=""
-            width={40}
-            height={40}
-            className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10"
+            width={96}
+            height={96}
+            className="h-14 w-14 shrink-0 object-contain sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-[4.25rem] lg:w-[4.25rem] xl:h-20 xl:w-20 2xl:h-[5.5rem] 2xl:w-[5.5rem]"
             priority
           />
-          <span className="font-display text-lg font-black uppercase tracking-[0.2em] text-white">
+          <span className="font-display text-[1.75rem] font-black uppercase leading-none tracking-[0.16em] text-white sm:text-[1.85rem] md:tracking-[0.2em] lg:text-[2rem] lg:tracking-[0.22em] xl:text-4xl 2xl:text-[2.35rem]">
             UrizInk
           </span>
         </Link>
@@ -41,7 +41,7 @@ export default function Header() {
           <NavLink href="/contact" selectedNav={selectedNav}>Contact</NavLink>
           <NavLink href="/reviews" selectedNav={selectedNav}>Reviews</NavLink>
         </nav>
-         
+
 
         {/* CTA */}
         <Link
@@ -53,10 +53,12 @@ export default function Header() {
 
         {/* MOBILE BUTTON */}
         <button
+          type="button"
           onClick={() => setOpen(true)}
-          className="md:hidden p-2 border border-neutral-700"
+          aria-label="Open menu"
+          className="flex h-11 w-11 shrink-0 items-center justify-center border border-neutral-700 md:hidden"
         >
-          <Menu size={22} />
+          <Menu size={24} />
         </button>
       </div>
 
@@ -103,18 +105,24 @@ function MobileMenu({
 }) {
   return (
     <div
-      className={`fixed inset-0 z-50 bg-black transition-transform duration-300 ${
-        open ? "translate-x-0" : "translate-x-full"
-      }`}
+      className={`fixed inset-0 z-50 bg-black transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"
+        }`}
     >
-      <div className="flex items-center justify-between px-6 h-16 border-b border-neutral-800">
-        <span className="uppercase tracking-widest font-black">Menu</span>
-        <button onClick={onClose}>
+      <div className="flex h-20 items-center justify-between border-b border-neutral-800 px-6">
+        <span className="font-display text-sm font-black uppercase tracking-widest">
+          Menu
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close menu"
+          className="flex h-11 w-11 items-center justify-center"
+        >
           <X size={26} />
         </button>
       </div>
 
-      <nav className="flex flex-col items-center justify-center gap-10 h-[calc(100vh-64px)] text-lg">
+      <nav className="flex h-[calc(100vh-5rem)] flex-col items-center justify-center gap-10 text-lg">
         <MobileNavLink href="/" onClick={onClose}>
           Home
         </MobileNavLink>
