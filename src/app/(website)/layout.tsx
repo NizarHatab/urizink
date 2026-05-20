@@ -22,6 +22,10 @@ const barlow = Barlow({
 export const metadata: Metadata = {
   title: "UrizInk — Blackwork Tattoo Studio",
   description: "Luxury blackwork tattoo studio in Beirut.",
+  icons: {
+    icon: [{ url: "/images/logo.PNG", type: "image/png" }],
+    apple: [{ url: "/images/logo.PNG", type: "image/png" }],
+  },
 };
 
 export default function WebsiteLayout({

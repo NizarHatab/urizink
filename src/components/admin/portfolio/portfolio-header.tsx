@@ -11,7 +11,9 @@ export default function PortfolioHeader({ onAddWork, pieceCount = 0 }: Props) {
       <div>
         <h2 className="text-2xl font-bold">Portfolio</h2>
         <p className="text-sm text-gray-500">
-          Upload your tattoo work — it appears on the public site and home page.
+          Upload work for the portfolio page. Use the{" "}
+          <span className="text-white">home</span> button on a piece to feature it
+          on the public home page (or edit the intro under Home page).
           {pieceCount > 0
             ? ` ${pieceCount} piece${pieceCount === 1 ? "" : "s"} live.`
             : ""}

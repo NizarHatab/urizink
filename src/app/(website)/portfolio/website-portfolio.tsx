@@ -5,6 +5,12 @@ import {
   portfolioImageColorClass,
   useTapColorReveal,
 } from "@/hooks/use-tap-color-reveal";
+import {
+  normalizePortfolioStyle,
+  PUBLIC_PORTFOLIO_FILTERS,
+  resolvePortfolioStyleLabel,
+} from "@/lib/portfolio-styles";
+import type { PortfolioStyle } from "@/lib/portfolio-styles";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import type { PortfolioItem } from "@/types/portfolio";
@@ -16,28 +22,21 @@ type Props = {
 };
 
 function displayTag(item: PortfolioItem): string {
-  if (item.style?.trim()) return item.style.trim();
+  if (item.style?.trim()) return resolvePortfolioStyleLabel(item.style);
   if (item.tags?.length) return item.tags[0];
   return "Portfolio";
 }
 
 export default function WebsitePortfolio({ initialItems }: Props) {
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [activeFilter, setActiveFilter] = useState<string>("All");
   const { toggleTileColor, isRevealed, clearRevealed } = useTapColorReveal();
-
-  const filters = useMemo(() => {
-    const set = new Set<string>();
-    for (const i of initialItems) {
-      const t = displayTag(i);
-      if (t) set.add(t);
-    }
-    const list = Array.from(set).sort((a, b) => a.localeCompare(b));
-    return ["All", ...list] as const;
-  }, [initialItems]);
 
   const visible = useMemo(() => {
     if (activeFilter === "All") return initialItems;
-    return initialItems.filter((i) => displayTag(i) === activeFilter);
+    const canonical = activeFilter as PortfolioStyle;
+    return initialItems.filter(
+      (i) => normalizePortfolioStyle(i.style) === canonical,
+    );
   }, [initialItems, activeFilter]);
 
   useEffect(() => {
@@ -60,25 +59,25 @@ export default function WebsitePortfolio({ initialItems }: Props) {
           </p>
         </motion.div>
 
-        {filters.length > 1 && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.05, ease }}
-          >
-            <StyleFilterControl
-              options={[...filters]}
-              value={activeFilter}
-              onChange={setActiveFilter}
-              variant="public"
-              label="Style"
-            />
-          </motion.div>
-        )}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05, ease }}
+        >
+          <StyleFilterControl
+            options={[...PUBLIC_PORTFOLIO_FILTERS]}
+            value={activeFilter}
+            onChange={setActiveFilter}
+            variant="public"
+            label="Style"
+          />
+        </motion.div>
 
         {visible.length === 0 ? (
-          <p className="text-center text-sm text-[var(--ink-gray-500)] py-16">
-            New work will appear here once it is added from the admin portfolio.
+          <p className="py-16 text-center text-sm text-[var(--ink-gray-500)]">
+            {activeFilter === "All"
+              ? "New work will appear here once it is added from the admin portfolio."
+              : `No pieces in “${activeFilter}” yet. Try another style or view all.`}
           </p>
         ) : (
           <div className="masonry-grid mx-auto max-w-6xl gap-6">
@@ -113,7 +112,10 @@ export default function WebsitePortfolio({ initialItems }: Props) {
                     src={img.imageUrl}
                     alt=""
                     aria-hidden
-                    className={portfolioImageColorClass(colorRevealed, "duration-700")}
+                    className={portfolioImageColorClass(
+                      colorRevealed,
+                      "duration-700",
+                    )}
                   />
                   <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 opacity-100 [@media(hover:hover)]:from-black/40 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:p-6">
                     <p className="text-xs uppercase tracking-widest text-[var(--ink-gray-300)]">

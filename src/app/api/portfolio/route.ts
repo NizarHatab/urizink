@@ -1,6 +1,7 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/require-admin-api";
+import { coercePortfolioStyleForStorage } from "@/lib/portfolio-styles";
 import {
   mimeToExtension,
   PORTFOLIO_ALLOWED_MIME,
@@ -33,6 +34,8 @@ export async function GET() {
         imageUrl: r.imageUrl,
         style: r.style,
         tags: r.tags,
+        featuredOnHome: r.featuredOnHome,
+        homeSortOrder: r.homeSortOrder,
         createdAt: r.createdAt.toISOString(),
       })),
     });
@@ -104,7 +107,10 @@ export async function POST(req: Request) {
     const row = await createPortfolioItem({
       title: title.trim().slice(0, 150),
       imageUrl: blob.url,
-      style: typeof style === "string" ? style.trim().slice(0, 50) || null : null,
+      style:
+        typeof style === "string"
+          ? coercePortfolioStyleForStorage(style)
+          : null,
       tags: tags.length ? tags : null,
     });
 
@@ -125,6 +131,8 @@ export async function POST(req: Request) {
         imageUrl: full.imageUrl,
         style: full.style,
         tags: full.tags,
+        featuredOnHome: full.featuredOnHome,
+        homeSortOrder: full.homeSortOrder,
         createdAt: full.createdAt.toISOString(),
       },
     });

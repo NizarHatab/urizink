@@ -9,15 +9,7 @@ export const PORTFOLIO_ALLOWED_MIME = new Set([
 
 export const PORTFOLIO_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
-export const PORTFOLIO_STYLE_SUGGESTIONS = [
-  "Black & Grey",
-  "Realism",
-  "Fine Line",
-  "Geometric",
-  "Dark Art",
-  "Traditional",
-  "Minimal",
-] as const;
+export { PORTFOLIO_STYLES as PORTFOLIO_STYLE_SUGGESTIONS } from "@/lib/portfolio-styles";
 
 export function validatePortfolioFile(
   file: File

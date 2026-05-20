@@ -1,4 +1,5 @@
-import { FiExternalLink, FiTrash2 } from "react-icons/fi";
+import { resolvePortfolioStyleLabel } from "@/lib/portfolio-styles";
+import { FiExternalLink, FiHome, FiTrash2 } from "react-icons/fi";
 
 type Props = {
   id: string;
@@ -6,7 +7,10 @@ type Props = {
   studio: string;
   tags: string[];
   image: string;
+  featuredOnHome: boolean;
+  featuredLoading?: boolean;
   onDelete: (id: string) => void;
+  onToggleFeatured: (id: string, next: boolean) => void;
 };
 
 export default function PortfolioCard({
@@ -15,19 +19,45 @@ export default function PortfolioCard({
   studio,
   tags,
   image,
+  featuredOnHome,
+  featuredLoading,
   onDelete,
+  onToggleFeatured,
 }: Props) {
   return (
-    <article className="group relative bg-[#0a0a0a] border border-white/20 rounded-xl overflow-hidden hover:border-white/50 transition">
-      <div className="aspect-[4/5] relative overflow-hidden bg-[var(--ink-gray-900)]">
+    <article
+      className={`group relative overflow-hidden rounded-xl border bg-[#0a0a0a] transition ${
+        featuredOnHome ? "border-white/40" : "border-white/20 hover:border-white/50"
+      }`}
+    >
+      <div className="relative aspect-[4/5] overflow-hidden bg-[var(--ink-gray-900)]">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${image})` }}
           role="img"
           aria-label={title}
         />
-        {/* Always visible — works on phone, iPad, and desktop (no hover required) */}
         <div className="absolute inset-x-0 bottom-0 z-10 flex gap-2 bg-gradient-to-t from-black via-black/95 to-transparent p-3 pt-12">
+          <button
+            type="button"
+            disabled={featuredLoading}
+            onClick={() => onToggleFeatured(id, !featuredOnHome)}
+            title={
+              featuredOnHome
+                ? "Remove from home page"
+                : "Show on home page"
+            }
+            className={`flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg border px-3 transition disabled:opacity-50 ${
+              featuredOnHome
+                ? "border-white bg-white text-black"
+                : "border-white/20 bg-white/15 text-white [@media(hover:hover)]:hover:bg-white/25"
+            }`}
+          >
+            <FiHome className="shrink-0" aria-hidden />
+            <span className="sr-only">
+              {featuredOnHome ? "On home page" : "Add to home page"}
+            </span>
+          </button>
           <button
             type="button"
             onClick={() => onDelete(id)}
@@ -49,16 +79,21 @@ export default function PortfolioCard({
         </div>
       </div>
 
-      <div className="p-4 border-t border-white/10">
-        <h4 className="text-sm font-bold truncate mb-1">{title}</h4>
+      <div className="border-t border-white/10 p-4">
+        <h4 className="mb-1 truncate text-sm font-bold">{title}</h4>
         <p className="text-xs text-gray-500">{studio}</p>
+        {featuredOnHome ? (
+          <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-white/80">
+            Featured on home
+          </p>
+        ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
           {tags.map((t) => (
             <span
               key={t}
-              className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[10px] uppercase tracking-wider text-gray-400"
+              className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-gray-400"
             >
-              {t}
+              {resolvePortfolioStyleLabel(t)}
             </span>
           ))}
         </div>

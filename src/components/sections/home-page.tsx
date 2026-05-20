@@ -1,6 +1,7 @@
 "use client";
 
 import Hero from "@/components/sections/hero";
+import { resolvePortfolioStyleLabel } from "@/lib/portfolio-styles";
 import type { PortfolioItem } from "@/types/portfolio";
 import type { ReviewListItem, ReviewStats } from "@/types/review";
 import {
@@ -21,13 +22,14 @@ const values = [
 ] as const;
 
 type Props = {
+  artistIntro: { heading: string; body: string } | null;
   portfolioPreview: PortfolioItem[];
   latestReviews: ReviewListItem[];
   reviewStats: ReviewStats;
 };
 
 function portfolioTag(item: PortfolioItem): string {
-  if (item.style?.trim()) return item.style.trim();
+  if (item.style?.trim()) return resolvePortfolioStyleLabel(item.style);
   if (item.tags?.length) return item.tags[0];
   return "Portfolio";
 }
@@ -89,6 +91,7 @@ function SectionCta({
 }
 
 export default function HomePage({
+  artistIntro,
   portfolioPreview,
   latestReviews,
   reviewStats,
@@ -100,7 +103,7 @@ export default function HomePage({
 
   return (
     <>
-      <Hero />
+      <Hero intro={artistIntro} />
 
       {/* Featured portfolio */}
       <motion.section

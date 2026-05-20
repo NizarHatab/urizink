@@ -5,12 +5,16 @@ import PortfolioUploadCard from "./portfolio-upload-card";
 type Props = {
   items: PortfolioItem[];
   onDelete: (id: string) => void;
+  onToggleFeatured: (id: string, next: boolean) => void;
+  featuredUpdatingId: string | null;
   onOpenUpload: () => void;
 };
 
 export default function PortfolioGrid({
   items,
   onDelete,
+  onToggleFeatured,
+  featuredUpdatingId,
   onOpenUpload,
 }: Props) {
   return (
@@ -29,7 +33,10 @@ export default function PortfolioGrid({
                 : ["Portfolio"]
           }
           image={t.imageUrl}
+          featuredOnHome={Boolean(t.featuredOnHome)}
+          featuredLoading={featuredUpdatingId === t.id}
           onDelete={onDelete}
+          onToggleFeatured={onToggleFeatured}
         />
       ))}
 

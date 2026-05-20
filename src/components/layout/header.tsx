@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -16,9 +17,19 @@ export default function Header() {
         {/* LOGO */}
         <Link
           href="/"
-          className="font-display text-lg font-black uppercase tracking-[0.2em] text-white"
+          className="flex items-center gap-2.5 sm:gap-3"
         >
-          UrizInk
+          <Image
+            src="/images/logo.PNG"
+            alt=""
+            width={40}
+            height={40}
+            className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10"
+            priority
+          />
+          <span className="font-display text-lg font-black uppercase tracking-[0.2em] text-white">
+            UrizInk
+          </span>
         </Link>
 
         {/* DESKTOP NAV */}

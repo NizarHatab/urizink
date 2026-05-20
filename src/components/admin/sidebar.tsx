@@ -10,10 +10,14 @@ import {
   ClipboardList,
   Plus,
   LogOut,
+  Home,
+  UserCircle,
 } from "lucide-react";
 
 const nav = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
+  { label: "Home page", icon: Home, href: "/admin/home" },
+  { label: "About page", icon: UserCircle, href: "/admin/about" },
   { label: "Portfolio", icon: Image, href: "/admin/portfolio" },
   { label: "Bookings", icon: ClipboardList, href: "/admin/bookings" },
   { label: "Schedule", icon: CalendarDays, href: "/admin/schedule" },

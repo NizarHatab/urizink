@@ -73,6 +73,34 @@ export async function uploadPortfolioItem(
   }
 }
 
+export async function patchPortfolioItem(
+  id: string,
+  body: {
+    featuredOnHome?: boolean;
+    homeSortOrder?: number;
+    style?: string | null;
+  },
+): Promise<ApiResponse<PortfolioItem>> {
+  try {
+    const res = await fetch(`/api/portfolio/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      credentials: "same-origin",
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { success: false, error: await parseError(res) };
+    }
+    return { success: true, data: (json as { data: PortfolioItem }).data };
+  } catch (e) {
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Update failed",
+    };
+  }
+}
+
 export async function deletePortfolioItem(
   id: string
 ): Promise<ApiResponse<void>> {

@@ -1,11 +1,8 @@
 "use client";
 
 import { uploadPortfolioItem } from "@/lib/api/portfolio";
-import {
-  PORTFOLIO_ACCEPT,
-  PORTFOLIO_STYLE_SUGGESTIONS,
-  validatePortfolioFile,
-} from "@/lib/portfolio-upload";
+import { PORTFOLIO_STYLES } from "@/lib/portfolio-styles";
+import { PORTFOLIO_ACCEPT, validatePortfolioFile } from "@/lib/portfolio-upload";
 import { notify } from "@/lib/ui/toast";
 import type { PortfolioItem } from "@/types/portfolio";
 import { Loader2, X } from "lucide-react";
@@ -159,21 +156,20 @@ export default function PortfolioUploadModal({
 
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Style (optional)
+              Style
             </label>
-            <input
+            <select
               value={style}
               onChange={(e) => setStyle(e.target.value)}
-              list="portfolio-style-suggestions"
-              placeholder="e.g. Black & Grey, Fine Line"
-              className="w-full rounded-lg border border-white/10 bg-black px-3 py-2.5 text-sm text-white outline-none placeholder:text-gray-600 focus:border-white/30"
-              maxLength={50}
-            />
-            <datalist id="portfolio-style-suggestions">
-              {PORTFOLIO_STYLE_SUGGESTIONS.map((s) => (
-                <option key={s} value={s} />
+              className="w-full rounded-lg border border-white/10 bg-black px-3 py-2.5 text-sm text-white outline-none focus:border-white/30"
+            >
+              <option value="">Choose a style…</option>
+              {PORTFOLIO_STYLES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
-            </datalist>
+            </select>
           </div>
 
           <div>

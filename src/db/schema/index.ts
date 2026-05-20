@@ -7,4 +7,5 @@ export * from "./portfolio";
 export * from "./reviews";
 export * from "./schedule";
 export * from "./studio-weekly-hours";
+export * from "./studio-home-content";
 export * from "./enums";

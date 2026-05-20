@@ -1,8 +1,13 @@
 "use client";
 
 import {
+  PORTFOLIO_STYLES,
+  normalizePortfolioStyle,
+} from "@/lib/portfolio-styles";
+import {
   deletePortfolioItem as deletePortfolioRequest,
   fetchPortfolio,
+  patchPortfolioItem,
 } from "@/lib/api/portfolio";
 import { notify } from "@/lib/ui/toast";
 import type { PortfolioItem } from "@/types/portfolio";
@@ -22,6 +27,9 @@ export default function PortfolioManager() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PortfolioItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [featuredUpdatingId, setFeaturedUpdatingId] = useState<string | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,17 +49,41 @@ export default function PortfolioManager() {
   }, [load]);
 
   const styleOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const i of items) {
-      if (i.style?.trim()) set.add(i.style.trim());
-    }
-    return ["All", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
+    const hasOther = items.some(
+      (i) => i.style?.trim() && !normalizePortfolioStyle(i.style),
+    );
+    const list = ["All", ...PORTFOLIO_STYLES];
+    if (hasOther) list.push("Other");
+    return list;
   }, [items]);
 
   const filtered = useMemo(() => {
     if (styleFilter === "All") return items;
-    return items.filter((i) => (i.style ?? "").trim() === styleFilter);
+    if (styleFilter === "Other") {
+      return items.filter(
+        (i) => i.style?.trim() && !normalizePortfolioStyle(i.style),
+      );
+    }
+    return items.filter(
+      (i) => normalizePortfolioStyle(i.style) === styleFilter,
+    );
   }, [items, styleFilter]);
+
+  async function handleToggleFeatured(id: string, next: boolean) {
+    setFeaturedUpdatingId(id);
+    const res = await patchPortfolioItem(id, { featuredOnHome: next });
+    setFeaturedUpdatingId(null);
+    if (!res.success || !res.data) {
+      notify.error(res.error ?? "Could not update home page");
+      return;
+    }
+    setItems((prev) =>
+      prev.map((x) => (x.id === id ? { ...x, ...res.data } : x)),
+    );
+    notify.success(
+      next ? "Added to home page gallery" : "Removed from home page",
+    );
+  }
 
   function onUploaded(item: PortfolioItem) {
     setItems((prev) => [item, ...prev]);
@@ -132,6 +164,8 @@ export default function PortfolioManager() {
             <PortfolioGrid
               items={filtered}
               onDelete={requestDelete}
+              onToggleFeatured={handleToggleFeatured}
+              featuredUpdatingId={featuredUpdatingId}
               onOpenUpload={() => setUploadOpen(true)}
             />
           )}

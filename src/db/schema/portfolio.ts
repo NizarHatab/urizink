@@ -1,5 +1,13 @@
 // src/db/schema/portfolio.ts
-import { pgTable, uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 export const portfolio = pgTable("portfolio", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -11,6 +19,10 @@ export const portfolio = pgTable("portfolio", {
   style: varchar("style", { length: 50 }),
 
   tags: text("tags").array(),
+
+  featuredOnHome: boolean("featured_on_home").default(false).notNull(),
+
+  homeSortOrder: integer("home_sort_order").default(0).notNull(),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

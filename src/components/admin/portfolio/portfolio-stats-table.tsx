@@ -1,3 +1,4 @@
+import { normalizePortfolioStyle } from "@/lib/portfolio-styles";
 import { useMemo } from "react";
 import type { PortfolioItem } from "@/types/portfolio";
 
@@ -9,7 +10,9 @@ export default function PortfolioStatsTable({ items }: Props) {
   const rows = useMemo(() => {
     const m = new Map<string, number>();
     for (const i of items) {
-      const key = i.style?.trim() || "Uncategorized";
+      const key =
+        normalizePortfolioStyle(i.style) ??
+        (i.style?.trim() || "Uncategorized");
       m.set(key, (m.get(key) ?? 0) + 1);
     }
     return Array.from(m.entries())
