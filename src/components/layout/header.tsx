@@ -14,13 +14,11 @@ export default function Header() {
     <header className="sticky top-0 z-50 bg-black border-b border-neutral-800">
       <div className="flex items-center justify-between px-5 md:px-10 h-16">
         {/* LOGO */}
-        <Link href="/" className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-full border border-white flex items-center justify-center">
-            🖤
-          </div>
-          <span className="text-lg font-black tracking-widest uppercase">
-            UrizInk
-          </span>
+        <Link
+          href="/"
+          className="font-display text-lg font-black uppercase tracking-[0.2em] text-white"
+        >
+          UrizInk
         </Link>
 
         {/* DESKTOP NAV */}
