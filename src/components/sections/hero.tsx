@@ -71,7 +71,7 @@ export default function Hero() {
               View Portfolio
             </motion.span>
           </Link>
-          <Link href="/contact">
+          <Link href="/book">
             <motion.span
               className="font-display inline-flex items-center justify-center border-2 border-[var(--ink-gray-600)] px-10 py-4 text-sm uppercase tracking-[0.2em] text-[var(--ink-gray-300)] md:px-12 md:py-5 md:text-base"
               whileHover={{
