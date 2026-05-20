@@ -26,42 +26,25 @@ export default function PortfolioCard({
           role="img"
           aria-label={title}
         />
-        <div className="absolute inset-0 hidden md:flex items-end p-4 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="flex gap-2 w-full">
-            <button
-              type="button"
-              onClick={() => onDelete(id)}
-              className="flex-1 bg-red-600/90 text-white py-2 rounded-lg text-xs font-bold hover:bg-red-500 flex items-center justify-center gap-1 min-h-[44px]"
-            >
-              <FiTrash2 className="inline shrink-0" /> Remove
-            </button>
-            <a
-              href={image}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 min-h-[44px] min-w-[44px] bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 text-white flex items-center justify-center"
-              title="Open image"
-            >
-              <FiExternalLink />
-            </a>
-          </div>
-        </div>
-        <div className="absolute inset-x-0 bottom-0 flex md:hidden gap-2 p-3 bg-gradient-to-t from-black via-black/90 to-transparent pt-10">
+        {/* Always visible — works on phone, iPad, and desktop (no hover required) */}
+        <div className="absolute inset-x-0 bottom-0 z-10 flex gap-2 bg-gradient-to-t from-black via-black/95 to-transparent p-3 pt-12">
           <button
             type="button"
             onClick={() => onDelete(id)}
-            className="flex-1 bg-red-600 text-white py-3 rounded-lg text-xs font-bold active:bg-red-500 flex items-center justify-center gap-1 min-h-[44px]"
+            className="flex min-h-[44px] flex-1 touch-manipulation items-center justify-center gap-1 rounded-lg bg-red-600 py-3 text-xs font-bold text-white active:bg-red-500 [@media(hover:hover)]:hover:bg-red-500"
           >
-            <FiTrash2 className="shrink-0" /> Delete
+            <FiTrash2 className="shrink-0" aria-hidden />
+            Delete
           </button>
           <a
             href={image}
             target="_blank"
             rel="noopener noreferrer"
-            className="min-h-[44px] min-w-[44px] px-3 bg-white/15 border border-white/20 rounded-lg text-white flex items-center justify-center"
+            className="flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center rounded-lg border border-white/20 bg-white/15 px-3 text-white [@media(hover:hover)]:hover:bg-white/25"
             title="Open image"
           >
-            <FiExternalLink />
+            <FiExternalLink aria-hidden />
+            <span className="sr-only">Open image</span>
           </a>
         </div>
       </div>

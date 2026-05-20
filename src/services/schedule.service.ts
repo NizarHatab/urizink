@@ -10,6 +10,12 @@ import {
   parseMinute,
   rangesOverlap,
 } from "@/lib/schedule-helpers";
+import {
+  formatStudioTimeLabel,
+  studioDayBoundsUtc,
+  studioDayOfWeek,
+  studioWallToUtc,
+} from "@/lib/studio-time";
 import { eq, and, gte, lt, gt } from "drizzle-orm";
 import type {
   ArtistAvailabilitySlot,
@@ -145,8 +151,8 @@ export async function getAvailableSlots(
   if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return [];
 
   const [y, m, d] = parts;
-  const dayDate = new Date(y, m - 1, d);
-  const dayOfWeek = dayDate.getDay();
+  const dateYmd = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const dayOfWeek = studioDayOfWeek(dateYmd);
 
   const availability = await getWeeklyAvailability();
   const dayHours = availability.find((a) => a.dayOfWeek === dayOfWeek);
@@ -157,12 +163,11 @@ export async function getAvailableSlots(
   const endH = parseHour(dayHours.endTime);
   const endM = parseMinute(dayHours.endTime);
 
-  const windowStart = new Date(y, m - 1, d, startH, startM, 0, 0);
-  const windowEnd = new Date(y, m - 1, d, endH, endM, 0, 0);
+  const windowStart = studioWallToUtc(dateYmd, startH, startM);
+  const windowEnd = studioWallToUtc(dateYmd, endH, endM);
   if (windowEnd <= windowStart) return [];
 
-  const dayStart = new Date(y, m - 1, d, 0, 0, 0, 0);
-  const dayEnd = new Date(y, m - 1, d, 23, 59, 59, 999);
+  const { dayStart, dayEnd } = studioDayBoundsUtc(dateYmd);
   const busy = await getBusyIntervalsForDay(dayStart, dayEnd);
 
   const now = Date.now();
@@ -184,14 +189,17 @@ export async function getAvailableSlots(
     slots.push({
       start: startDate.toISOString(),
       end: endDate.toISOString(),
-      label: startDate.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      label: formatStudioTimeLabel(startDate),
     });
   }
 
-  return slots;
+  const seen = new Set<number>();
+  return slots.filter((s) => {
+    const ms = new Date(s.start).getTime();
+    if (seen.has(ms)) return false;
+    seen.add(ms);
+    return true;
+  });
 }
 
 export async function getAvailableDates(
@@ -223,12 +231,11 @@ export async function isSlotAvailable(
 ): Promise<boolean> {
   const slots = await getAvailableSlots(dateStr, durationMinutes);
   const normalized = timeHHmm.slice(0, 5);
-  return slots.some((s) => {
-    const d = new Date(s.start);
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    return `${hh}:${mm}` === normalized;
-  });
+  const [th, tm] = normalized.split(":").map((n) => parseInt(n, 10));
+  if (Number.isNaN(th) || Number.isNaN(tm)) return false;
+
+  const targetMs = studioWallToUtc(dateStr, th, tm).getTime();
+  return slots.some((s) => new Date(s.start).getTime() === targetMs);
 }
 
 export async function getScheduleForWeek(

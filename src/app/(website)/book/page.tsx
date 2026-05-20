@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { bookingFormToPayload } from "@/lib/serializers/bookings";
 import createBookingRequest from "@/lib/api/bookings";
 import { bookingCreateSchema } from "@/lib/validators/booking";
@@ -11,6 +11,10 @@ import {
 } from "@/lib/booking-duration";
 import { getAvailableDates, getAvailableSlots } from "@/lib/api/schedule";
 import { sendBookingToWhatsApp } from "@/lib/whatsapp";
+import {
+  formatStudioTimeLabel,
+  utcToStudioHm,
+} from "@/lib/studio-time";
 import { notify } from "@/lib/ui/toast";
 import { motion } from "framer-motion";
 import { PenLine, MapPin, Calendar } from "lucide-react";
@@ -19,17 +23,13 @@ const placements = ["Forearm", "Upper Arm", "Chest", "Back", "Thigh", "Calf"];
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
-function formatSlotTime(iso: string): string {
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
 export default function Page() {
   const [loading, setLoading] = useState(false);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [availableSlots, setAvailableSlots] = useState<{ start: string; end: string; label?: string }[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [selectedSlotStart, setSelectedSlotStart] = useState("");
   const [selectedSize, setSelectedSize] = useState(BOOKING_SIZE_OPTIONS[0]);
   const sessionMinutes = durationMinutesFromSize(selectedSize);
 
@@ -38,6 +38,7 @@ export default function Page() {
 
   useEffect(() => {
     setSelectedDate("");
+    setSelectedSlotStart("");
     setAvailableSlots([]);
     getAvailableDates(fromStr, 4, sessionMinutes).then((res) => {
       if (res.success && res.data) setAvailableDates(res.data);
@@ -48,8 +49,10 @@ export default function Page() {
   useEffect(() => {
     if (!selectedDate) {
       setAvailableSlots([]);
+      setSelectedSlotStart("");
       return;
     }
+    setSelectedSlotStart("");
     setSlotsLoading(true);
     getAvailableSlots(selectedDate, sessionMinutes)
       .then((res) => {
@@ -58,6 +61,17 @@ export default function Page() {
       })
       .finally(() => setSlotsLoading(false));
   }, [selectedDate, sessionMinutes]);
+
+  const selectableSlots = useMemo(() => {
+    const now = Date.now();
+    const seen = new Set<number>();
+    return availableSlots.filter((slot) => {
+      const ms = new Date(slot.start).getTime();
+      if (!Number.isFinite(ms) || ms <= now || seen.has(ms)) return false;
+      seen.add(ms);
+      return true;
+    });
+  }, [availableSlots]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -85,6 +99,7 @@ export default function Page() {
       );
       form.reset();
       setSelectedDate("");
+      setSelectedSlotStart("");
       setAvailableSlots([]);
     } catch (err) {
       notify.error(
@@ -195,8 +210,14 @@ export default function Page() {
               Where do you want it?
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {placements.map((p) => (
-                <Radio key={p} name="placement" label={p} value={p} />
+              {placements.map((p, i) => (
+                <Radio
+                  key={p}
+                  name="placement"
+                  label={p}
+                  value={p}
+                  required={i === 0}
+                />
               ))}
             </div>
           </Card>
@@ -219,7 +240,7 @@ export default function Page() {
                   <strong className="text-[var(--ink-gray-300)]">
                     {formatDurationLabel(sessionMinutes)}
                   </strong>{" "}
-                  session ({selectedSize}). Start times are on the hour.
+                  session ({selectedSize}). Times shown are studio local (Beirut).
                 </p>
                 <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
                   <div className="relative z-10">
@@ -267,27 +288,45 @@ export default function Page() {
                       <p className="text-sm text-[var(--ink-gray-500)]">
                         Loading times…
                       </p>
-                    ) : availableSlots.length === 0 ? (
+                    ) : selectableSlots.length === 0 ? (
                       <p className="text-sm text-[var(--ink-gray-500)]">
                         No available times on this day. Try another date.
                       </p>
                     ) : (
                       <div className="space-y-2">
-                        {availableSlots.map((slot) => {
-                          const timeValue = formatSlotTime(slot.start);
+                        <input
+                          type="hidden"
+                          name="time"
+                          value={
+                            selectedSlotStart
+                              ? utcToStudioHm(selectedSlotStart)
+                              : ""
+                          }
+                        />
+                        {selectableSlots.map((slot) => {
+                          const selected = selectedSlotStart === slot.start;
                           const label =
-                            slot.label ??
-                            new Date(slot.start).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            });
+                            slot.label ?? formatStudioTimeLabel(slot.start);
                           return (
-                            <Radio
+                            <button
                               key={slot.start}
-                              name="time"
-                              label={label}
-                              value={timeValue}
-                            />
+                              type="button"
+                              onClick={() => setSelectedSlotStart(slot.start)}
+                              className={`flex w-full min-h-[52px] cursor-pointer items-center justify-between gap-3 border px-4 py-3.5 text-left transition-colors ${
+                                selected
+                                  ? "border-white bg-white/10 text-white"
+                                  : "border-[var(--ink-gray-800)] bg-black text-[var(--ink-gray-400)] hover:border-[var(--ink-gray-600)] hover:text-white"
+                              }`}
+                            >
+                              <span className="font-display text-sm uppercase tracking-wide">
+                                {label}
+                              </span>
+                              {selected && (
+                                <span className="text-[10px] uppercase tracking-widest text-[var(--ink-gray-400)]">
+                                  Selected
+                                </span>
+                              )}
+                            </button>
                           );
                         })}
                       </div>
@@ -358,6 +397,7 @@ interface RadioProps {
   label: string;
   name: string;
   value: string;
+  required?: boolean;
 }
 
 /* ---------------- COMPONENTS ---------------- */
@@ -451,14 +491,14 @@ function FileUpload({ label }: FileUploadProps) {
   );
 }
 
-function Radio({ label, name, value }: RadioProps) {
+function Radio({ label, name, value, required = false }: RadioProps) {
   return (
     <label className="group flex cursor-pointer items-center gap-3 border border-[var(--ink-gray-800)] bg-black px-4 py-3.5 transition-colors hover:border-[var(--ink-gray-600)]">
       <input
         type="radio"
         name={name}
         value={value}
-        required
+        required={required}
         className="h-4 w-4 border-[var(--ink-gray-600)] bg-black text-white focus:ring-white focus:ring-offset-0 focus:ring-offset-black"
       />
       <span className="font-display text-sm uppercase tracking-wide text-[var(--ink-gray-400)] group-hover:text-white">

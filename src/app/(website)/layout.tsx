@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, Barlow } from "next/font/google";
 import "../globals.css";
-import { Toaster } from "sonner";
+import AppToaster from "@/components/ui/app-toaster";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 
@@ -32,13 +32,7 @@ export default function WebsiteLayout({
   return (
     <html lang="en" className={`${bebasNeue.variable} ${barlow.variable}`}>
       <body className="bg-black text-white font-sans antialiased">
-        <Toaster
-          position="top-right"
-          richColors
-          duration={3000}
-          expand
-          className="sm:top-4 sm:right-4 bottom-4 left-1/2 -translate-x-1/2 sm:translate-x-0"
-        />
+        <AppToaster position="top-right" />
         <main className="flex min-h-screen flex-col items-center">
           <div className="flex w-full min-h-screen flex-col overflow-x-hidden bg-black text-white">
             <Header />

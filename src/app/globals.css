@@ -66,3 +66,21 @@ body {
   aspect-ratio: 3 / 4;
   min-height: 320px;
 }
+
+/* Sonner: center toasts on mobile (public site + admin) */
+@media (max-width: 767px) {
+  [data-sonner-toaster].uriz-toaster {
+    left: 50% !important;
+    right: auto !important;
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    width: min(calc(100vw - 2rem), 22rem) !important;
+  }
+
+  [data-sonner-toaster].uriz-toaster [data-sonner-toast] {
+    width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}

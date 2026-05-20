@@ -3,6 +3,8 @@ import { bookings } from "@/db/schema/bookings";
 import { users } from "@/db/schema/users";
 import { eq } from "drizzle-orm";
 import { durationMinutesFromSize } from "@/lib/booking-duration";
+import { parseHour, parseMinute } from "@/lib/schedule-helpers";
+import { studioWallToUtc } from "@/lib/studio-time";
 import { isSlotAvailable } from "@/services/schedule.service";
 import { findOrCreateUserByEmail } from "./user.service";
 import { Booking, BookingCreateInput, BookingResponse } from "@/types";
@@ -18,8 +20,13 @@ export async function createBooking(data: BookingCreateInput) {
   let scheduledAt: Date | undefined;
 
   if (data.date?.trim() && data.time?.trim()) {
-    const dateTimeString = `${data.date.trim()}T${data.time.trim()}:00`;
-    const parsedDate = new Date(dateTimeString);
+    const dateStr = data.date.trim();
+    const timeStr = data.time.trim().slice(0, 5);
+    const parsedDate = studioWallToUtc(
+      dateStr,
+      parseHour(timeStr),
+      parseMinute(timeStr)
+    );
 
     if (isNaN(parsedDate.getTime())) {
       throw new Error("Invalid date/time combination");
@@ -31,11 +38,7 @@ export async function createBooking(data: BookingCreateInput) {
 
     const durationMinutes = durationMinutesFromSize(data.size);
 
-    const available = await isSlotAvailable(
-      data.date.trim(),
-      data.time.trim(),
-      durationMinutes
-    );
+    const available = await isSlotAvailable(dateStr, timeStr, durationMinutes);
     if (!available) {
       throw new Error(
         "That time is no longer available for this session length. Please pick another slot."

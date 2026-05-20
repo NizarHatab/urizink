@@ -11,6 +11,7 @@ import PortfolioFilters from "./portfolio-filters";
 import PortfolioGrid from "./portfolio-grid";
 import PortfolioHeader from "./portfolio-header";
 import PortfolioStatsTable from "./portfolio-stats-table";
+import ConfirmDialog from "@/components/admin/confirm-dialog";
 import PortfolioUploadModal from "./portfolio-upload-modal";
 
 export default function PortfolioManager() {
@@ -19,6 +20,8 @@ export default function PortfolioManager() {
   const [error, setError] = useState<string | null>(null);
   const [styleFilter, setStyleFilter] = useState<string>("All");
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PortfolioItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,21 +57,24 @@ export default function PortfolioManager() {
     setItems((prev) => [item, ...prev]);
   }
 
-  async function onDelete(id: string) {
-    if (
-      !confirm(
-        "Remove this piece from the portfolio? The image file will be deleted from storage."
-      )
-    ) {
-      return;
-    }
+  function requestDelete(id: string) {
+    const item = items.find((x) => x.id === id);
+    if (item) setDeleteTarget(item);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget || deleting) return;
+    const id = deleteTarget.id;
+    setDeleting(true);
     const res = await deletePortfolioRequest(id);
+    setDeleting(false);
     if (!res.success) {
       notify.error(res.error ?? "Delete failed");
       return;
     }
-    notify.success("Removed");
+    notify.success("Removed from portfolio");
     setItems((prev) => prev.filter((x) => x.id !== id));
+    setDeleteTarget(null);
   }
 
   if (error) {
@@ -125,7 +131,7 @@ export default function PortfolioManager() {
           ) : (
             <PortfolioGrid
               items={filtered}
-              onDelete={onDelete}
+              onDelete={requestDelete}
               onOpenUpload={() => setUploadOpen(true)}
             />
           )}
@@ -136,6 +142,20 @@ export default function PortfolioManager() {
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
         onSuccess={onUploaded}
+      />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Remove this piece?"
+        description={
+          deleteTarget
+            ? `“${deleteTarget.title}” will be removed from your public portfolio and the image will be deleted from storage. This can’t be undone.`
+            : ""
+        }
+        confirmLabel="Remove"
+        cancelLabel="Keep it"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => !deleting && setDeleteTarget(null)}
       />
     </>
   );
