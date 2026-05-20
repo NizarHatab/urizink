@@ -1,8 +1,12 @@
 "use client";
 
 import StyleFilterControl from "@/components/ui/style-filter-control";
+import {
+  portfolioImageColorClass,
+  useTapColorReveal,
+} from "@/hooks/use-tap-color-reveal";
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PortfolioItem } from "@/types/portfolio";
 
 const ease = [0.16, 1, 0.3, 1] as const;
@@ -19,6 +23,7 @@ function displayTag(item: PortfolioItem): string {
 
 export default function WebsitePortfolio({ initialItems }: Props) {
   const [activeFilter, setActiveFilter] = useState("All");
+  const { toggleTileColor, isRevealed, clearRevealed } = useTapColorReveal();
 
   const filters = useMemo(() => {
     const set = new Set<string>();
@@ -34,6 +39,10 @@ export default function WebsitePortfolio({ initialItems }: Props) {
     if (activeFilter === "All") return initialItems;
     return initialItems.filter((i) => displayTag(i) === activeFilter);
   }, [initialItems, activeFilter]);
+
+  useEffect(() => {
+    clearRevealed();
+  }, [activeFilter, clearRevealed]);
 
   return (
     <div className="flex w-full flex-col items-center px-4 py-12 md:px-10">
@@ -73,35 +82,50 @@ export default function WebsitePortfolio({ initialItems }: Props) {
           </p>
         ) : (
           <div className="masonry-grid mx-auto max-w-6xl gap-6">
-            {visible.map((img, i) => (
-              <motion.div
-                key={img.id}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{
-                  duration: 0.5,
-                  delay: i * 0.06,
-                  ease,
-                }}
-                className="masonry-item group relative cursor-pointer overflow-hidden border border-[var(--ink-gray-800)] bg-[var(--ink-gray-900)] transition-colors duration-500 hover:border-white"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.imageUrl}
-                  alt={img.title}
-                  className="h-full w-full object-cover grayscale transition-all duration-700 group-hover:grayscale-0 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 opacity-100 transition-opacity duration-300 md:from-black/40 md:opacity-0 md:group-hover:opacity-100 md:p-6">
-                  <p className="text-xs uppercase tracking-widest text-[var(--ink-gray-300)]">
-                    {displayTag(img)}
-                  </p>
-                  <h3 className="text-base font-bold uppercase tracking-tight text-white sm:text-lg">
-                    {img.title}
-                  </h3>
-                </div>
-              </motion.div>
-            ))}
+            {visible.map((img, i) => {
+              const colorRevealed = isRevealed(img.id);
+              return (
+                <motion.button
+                  key={img.id}
+                  type="button"
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{
+                    duration: 0.5,
+                    delay: i * 0.06,
+                    ease,
+                  }}
+                  onClick={() => toggleTileColor(img.id)}
+                  aria-label={
+                    colorRevealed
+                      ? `${img.title}, full color — tap again to hide`
+                      : `${img.title} — tap to see in color`
+                  }
+                  className={`masonry-item group relative w-full cursor-pointer overflow-hidden border bg-[var(--ink-gray-900)] p-0 text-left transition-colors duration-500 touch-manipulation [@media(hover:hover)]:hover:border-white ${
+                    colorRevealed
+                      ? "border-white/40"
+                      : "border-[var(--ink-gray-800)]"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.imageUrl}
+                    alt=""
+                    aria-hidden
+                    className={portfolioImageColorClass(colorRevealed, "duration-700")}
+                  />
+                  <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 opacity-100 [@media(hover:hover)]:from-black/40 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:p-6">
+                    <p className="text-xs uppercase tracking-widest text-[var(--ink-gray-300)]">
+                      {displayTag(img)}
+                    </p>
+                    <h3 className="text-base font-bold uppercase tracking-tight text-white sm:text-lg">
+                      {img.title}
+                    </h3>
+                  </div>
+                </motion.button>
+              );
+            })}
           </div>
         )}
       </div>
