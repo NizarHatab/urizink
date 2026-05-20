@@ -43,6 +43,13 @@
       "when": 1770100000000,
       "tag": "0005_studio_weekly_hours",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1770200000000,
+      "tag": "0006_booking_reference_images",
+      "breakpoints": true
     }
   ]
 }

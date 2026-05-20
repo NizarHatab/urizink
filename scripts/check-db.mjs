@@ -62,6 +62,16 @@ const scheduleCols = await client.query(`
 `);
 console.log("schedule columns:", scheduleCols.rows.map((r) => r.column_name).join(", "));
 
+const bookingCols = await client.query(`
+  SELECT column_name FROM information_schema.columns
+  WHERE table_schema = 'public' AND table_name = 'bookings' ORDER BY ordinal_position
+`);
+const bookingColNames = bookingCols.rows.map((r) => r.column_name);
+console.log(
+  "bookings.reference_image_urls:",
+  bookingColNames.includes("reference_image_urls") ? "yes" : "MISSING"
+);
+
 const allTables = await client.query(`
   SELECT table_name FROM information_schema.tables
   WHERE table_schema = 'public' ORDER BY 1

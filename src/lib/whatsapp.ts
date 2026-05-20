@@ -23,6 +23,7 @@ export type BookingWhatsAppPayload = {
   size: string;
   date?: string;
   time?: string;
+  referenceImageUrls?: string[];
 };
 
 function openWhatsApp(text: string) {
@@ -83,7 +84,11 @@ ${data.description}
 📍 Placement: ${data.placement}
 📏 Size: ${data.size} (~${duration})
 
-${slotSection}
+${slotSection}${
+    data.referenceImageUrls?.length
+      ? `\n\n🖼 Reference images (${data.referenceImageUrls.length}):\n${data.referenceImageUrls.map((url, i) => `${i + 1}. ${url}`).join("\n")}`
+      : ""
+  }
 ━━━━━━━━━━━━━━━━
 Sent via UrizInk booking form`;
 

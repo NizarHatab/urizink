@@ -6,6 +6,7 @@ import {
   text,
   timestamp,
   integer,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
@@ -25,6 +26,11 @@ export const bookings = pgTable("bookings", {
     .$type<"pending" | "confirmed" | "completed" | "cancelled">()
     .default("pending")
     .notNull(),
+
+  referenceImageUrls: jsonb("reference_image_urls")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

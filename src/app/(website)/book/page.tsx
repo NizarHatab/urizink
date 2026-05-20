@@ -10,6 +10,11 @@ import {
   formatDurationLabel,
 } from "@/lib/booking-duration";
 import { getAvailableDates, getAvailableSlots } from "@/lib/api/schedule";
+import {
+  BOOKING_REFERENCE_ACCEPT,
+  BOOKING_REFERENCE_MAX_FILES,
+  validateBookingReferenceFiles,
+} from "@/lib/booking-reference-upload";
 import { sendBookingToWhatsApp } from "@/lib/whatsapp";
 import {
   formatStudioTimeLabel,
@@ -30,6 +35,8 @@ export default function Page() {
   const [availableSlots, setAvailableSlots] = useState<{ start: string; end: string; label?: string }[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlotStart, setSelectedSlotStart] = useState("");
+  const [referenceFiles, setReferenceFiles] = useState<File[]>([]);
+  const [referencePreviews, setReferencePreviews] = useState<string[]>([]);
   const [selectedSize, setSelectedSize] = useState(BOOKING_SIZE_OPTIONS[0]);
   const sessionMinutes = durationMinutesFromSize(selectedSize);
 
@@ -73,6 +80,34 @@ export default function Page() {
     });
   }, [availableSlots]);
 
+  function clearReferenceFiles() {
+    referencePreviews.forEach((url) => URL.revokeObjectURL(url));
+    setReferencePreviews([]);
+    setReferenceFiles([]);
+  }
+
+  function onReferenceFilesChange(files: FileList | null) {
+    if (!files?.length) return;
+    const next = [...referenceFiles, ...Array.from(files)].slice(
+      0,
+      BOOKING_REFERENCE_MAX_FILES
+    );
+    const check = validateBookingReferenceFiles(next);
+    if (!check.ok) {
+      notify.error(check.error);
+      return;
+    }
+    referencePreviews.forEach((url) => URL.revokeObjectURL(url));
+    setReferenceFiles(next);
+    setReferencePreviews(next.map((f) => URL.createObjectURL(f)));
+  }
+
+  function removeReferenceFile(index: number) {
+    URL.revokeObjectURL(referencePreviews[index]);
+    setReferenceFiles((prev) => prev.filter((_, i) => i !== index));
+    setReferencePreviews((prev) => prev.filter((_, i) => i !== index));
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
@@ -87,17 +122,27 @@ export default function Page() {
         setLoading(false);
         return;
       }
-      const { success: ok, error: err } = await createBookingRequest(parsed.data);
-      if (!ok) {
-        notify.error(err || "Failed to create booking request");
+      const fileCheck = validateBookingReferenceFiles(referenceFiles);
+      if (!fileCheck.ok) {
+        notify.error(fileCheck.error);
         setLoading(false);
         return;
       }
-      sendBookingToWhatsApp(parsed.data);
+      const res = await createBookingRequest(parsed.data, referenceFiles);
+      if (!res.success) {
+        notify.error(res.error || "Failed to create booking request");
+        setLoading(false);
+        return;
+      }
+      sendBookingToWhatsApp({
+        ...parsed.data,
+        referenceImageUrls: res.booking?.referenceImageUrls,
+      });
       notify.success(
         "Request saved — complete the message in WhatsApp to send it to Uriz"
       );
       form.reset();
+      clearReferenceFiles();
       setSelectedDate("");
       setSelectedSlotStart("");
       setAvailableSlots([]);
@@ -200,7 +245,12 @@ export default function Page() {
                   confirms the exact plan after you submit.
                 </p>
               </div>
-              <FileUpload label="Reference images" />
+              <ReferenceImagesUpload
+                files={referenceFiles}
+                previews={referencePreviews}
+                onAdd={onReferenceFilesChange}
+                onRemove={removeReferenceFile}
+              />
             </div>
           </Card>
 
@@ -389,8 +439,11 @@ interface SelectProps {
   options: string[];
 }
 
-interface FileUploadProps {
-  label: string;
+interface ReferenceImagesUploadProps {
+  files: File[];
+  previews: string[];
+  onAdd: (list: FileList | null) => void;
+  onRemove: (index: number) => void;
 }
 
 interface RadioProps {
@@ -476,17 +529,62 @@ function Select({ label, options, name }: SelectProps) {
   );
 }
 
-function FileUpload({ label }: FileUploadProps) {
+function ReferenceImagesUpload({
+  files,
+  previews,
+  onAdd,
+  onRemove,
+}: ReferenceImagesUploadProps) {
+  const atMax = files.length >= BOOKING_REFERENCE_MAX_FILES;
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 sm:col-span-2">
       <label className="block font-display text-xs uppercase tracking-widest text-[var(--ink-gray-500)]">
-        {label}
+        Reference images (optional)
       </label>
-      <label className="flex min-h-[52px] w-full cursor-pointer items-center justify-center gap-2 border-2 border-dashed border-[var(--ink-gray-700)] bg-transparent px-4 py-3 text-xs uppercase tracking-wider text-[var(--ink-gray-400)] transition-colors hover:border-[var(--ink-gray-500)] hover:text-white">
-        <span>+</span>
-        <span>Add files</span>
-        <input type="file" multiple className="hidden" accept="image/*" />
-      </label>
+      <p className="text-[10px] text-[var(--ink-gray-500)]">
+        Up to {BOOKING_REFERENCE_MAX_FILES} images, 4MB each — JPEG, PNG, WebP, or GIF.
+      </p>
+      {!atMax && (
+        <label className="flex min-h-[52px] w-full cursor-pointer items-center justify-center gap-2 border-2 border-dashed border-[var(--ink-gray-700)] bg-transparent px-4 py-3 text-xs uppercase tracking-wider text-[var(--ink-gray-400)] transition-colors hover:border-[var(--ink-gray-500)] hover:text-white">
+          <span>+</span>
+          <span>Add reference photos</span>
+          <input
+            type="file"
+            multiple
+            className="hidden"
+            accept={BOOKING_REFERENCE_ACCEPT}
+            onChange={(e) => {
+              onAdd(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </label>
+      )}
+      {previews.length > 0 && (
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {previews.map((src, i) => (
+            <li
+              key={src}
+              className="relative aspect-square overflow-hidden border border-[var(--ink-gray-800)] bg-[var(--ink-gray-900)]"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt={files[i]?.name ?? `Reference ${i + 1}`}
+                className="h-full w-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => onRemove(i)}
+                className="absolute right-1 top-1 min-h-[32px] min-w-[32px] rounded bg-black/80 px-2 text-[10px] font-bold uppercase text-white"
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

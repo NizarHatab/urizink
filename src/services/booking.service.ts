@@ -2,14 +2,26 @@ import { db } from "@/db";
 import { bookings } from "@/db/schema/bookings";
 import { users } from "@/db/schema/users";
 import { eq } from "drizzle-orm";
+import { uploadBookingReferenceImages } from "@/lib/booking-reference-storage";
+import { validateBookingReferenceFiles } from "@/lib/booking-reference-upload";
 import { durationMinutesFromSize } from "@/lib/booking-duration";
+import { parseReferenceImageUrls } from "@/lib/parse-booking-reference-urls";
 import { parseHour, parseMinute } from "@/lib/schedule-helpers";
 import { studioWallToUtc } from "@/lib/studio-time";
 import { isSlotAvailable } from "@/services/schedule.service";
 import { findOrCreateUserByEmail } from "./user.service";
 import { Booking, BookingCreateInput, BookingResponse } from "@/types";
 
-export async function createBooking(data: BookingCreateInput) {
+export async function createBooking(
+  data: BookingCreateInput,
+  referenceFiles: File[] = []
+) {
+  if (referenceFiles.length > 0) {
+    const fileCheck = validateBookingReferenceFiles(referenceFiles);
+    if (!fileCheck.ok) {
+      throw new Error(fileCheck.error);
+    }
+  }
   const user = await findOrCreateUserByEmail({
     email: data.email,
     firstName: data.firstName,
@@ -60,10 +72,25 @@ export async function createBooking(data: BookingCreateInput) {
       scheduledAt,
       durationMinutes,
       status: "pending",
+      referenceImageUrls: [],
     })
     .returning();
 
-  return booking;
+  let referenceImageUrls: string[] = [];
+  if (referenceFiles.length > 0) {
+    referenceImageUrls = await uploadBookingReferenceImages(
+      booking.id,
+      referenceFiles
+    );
+    if (referenceImageUrls.length > 0) {
+      await db
+        .update(bookings)
+        .set({ referenceImageUrls })
+        .where(eq(bookings.id, booking.id));
+    }
+  }
+
+  return { ...booking, referenceImageUrls };
 }
 
 export async function getBookings(): Promise<BookingResponse> {
@@ -77,6 +104,7 @@ export async function getBookings(): Promise<BookingResponse> {
       scheduledAt: bookings.scheduledAt,
       durationMinutes: bookings.durationMinutes,
       status: bookings.status,
+      referenceImageUrls: bookings.referenceImageUrls,
       createdAt: bookings.createdAt,
       firstName: users.firstName,
       lastName: users.lastName,
@@ -99,6 +127,7 @@ export async function getBookings(): Promise<BookingResponse> {
     scheduledAt: row.scheduledAt?.toISOString(),
     durationMinutes: row.durationMinutes ?? undefined,
     status: row.status,
+    referenceImageUrls: parseReferenceImageUrls(row.referenceImageUrls),
     createdAt: row.createdAt.toISOString(),
   }));
 
@@ -119,6 +148,7 @@ export async function getBookingById(id: string): Promise<Booking | null> {
       scheduledAt: bookings.scheduledAt,
       durationMinutes: bookings.durationMinutes,
       status: bookings.status,
+      referenceImageUrls: bookings.referenceImageUrls,
       createdAt: bookings.createdAt,
       firstName: users.firstName,
       lastName: users.lastName,
@@ -145,6 +175,7 @@ export async function getBookingById(id: string): Promise<Booking | null> {
     scheduledAt: row.scheduledAt?.toISOString(),
     durationMinutes: row.durationMinutes ?? undefined,
     status: row.status,
+    referenceImageUrls: parseReferenceImageUrls(row.referenceImageUrls),
     createdAt: row.createdAt.toISOString(),
   };
 }

@@ -7,7 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts && node scripts/apply-pending-migrations.mjs",
     "db:status": "node scripts/check-db.mjs",
     "db:apply-pending": "node scripts/apply-pending-migrations.mjs",
     "db:studio": "drizzle-kit studio --config=drizzle.config.ts"

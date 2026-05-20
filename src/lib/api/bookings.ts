@@ -12,14 +12,30 @@ function formatValidationError(json: {
   return json.error ?? "Failed to create booking";
 }
 
+export type CreatedBookingResult = {
+  success: boolean;
+  booking?: Booking & { referenceImageUrls?: string[] };
+  error?: string;
+};
+
 export default async function createBookingRequest(
-    data: BookingCreateInput
-) {
+  data: BookingCreateInput,
+  referenceFiles: File[] = []
+): Promise<CreatedBookingResult> {
     try {
+        const form = new FormData();
+        for (const [key, value] of Object.entries(data)) {
+          if (value != null && String(value).trim() !== "") {
+            form.append(key, String(value));
+          }
+        }
+        for (const file of referenceFiles) {
+          form.append("referenceImages", file);
+        }
+
         const response = await fetch("/api/bookings", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
+            body: form,
         });
         const json = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -27,7 +43,7 @@ export default async function createBookingRequest(
         }
         return {
             success: true,
-            data: json,
+            booking: json.booking as Booking & { referenceImageUrls?: string[] },
         };
     } catch (error) {
         console.error("BOOKING_ERROR:", error);

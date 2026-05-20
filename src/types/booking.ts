@@ -23,6 +23,7 @@ export interface Booking {
   /** Appointment length in minutes; default 60. */
   durationMinutes?: number;
   status: BookingStatus;
+  referenceImageUrls?: string[];
   createdAt: string;
 }
 

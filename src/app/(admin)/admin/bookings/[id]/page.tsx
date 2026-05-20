@@ -280,6 +280,33 @@ export default function BookingDetailPage() {
             </div>
           </section>
 
+          {booking.referenceImageUrls &&
+            booking.referenceImageUrls.length > 0 && (
+              <section>
+                <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                  Reference images
+                </h2>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {booking.referenceImageUrls.map((url) => (
+                    <a
+                      key={url}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block aspect-square overflow-hidden rounded-lg border border-white/10 bg-white/5"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt="Client reference"
+                        className="h-full w-full object-cover"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
+
           <section>
             <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
               Schedule
