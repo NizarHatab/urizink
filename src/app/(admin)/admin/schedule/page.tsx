@@ -66,6 +66,20 @@ function formatDayHeader(weekMonday: Date, dayIndex: number): string {
   return d.getDate().toString();
 }
 
+function formatHourLabel(hour: number): string {
+  return hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
+}
+
+function todayDayIndexInWeek(weekMonday: Date): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const mon = new Date(weekMonday);
+  mon.setHours(0, 0, 0, 0);
+  const diff = Math.round((today.getTime() - mon.getTime()) / 86_400_000);
+  if (diff < 0 || diff > 6) return 0;
+  return diff;
+}
+
 type CellContent =
   | { type: "off" }
   | { type: "available" }
@@ -153,6 +167,126 @@ function buildSlotMap(
   return map;
 }
 
+type SlotCellProps = {
+  dayIndex: number;
+  hour: number;
+  content: CellContent | undefined;
+  rangeMode: boolean;
+  rangeStart: { dayIndex: number; hour: number } | null;
+  actionLoading: string | null;
+  onBlockSlot: (dayIndex: number, hour: number) => void;
+  onUnblockSlot: (blockId: string) => void;
+  compact?: boolean;
+};
+
+function ScheduleSlotCell({
+  dayIndex,
+  hour,
+  content,
+  rangeMode,
+  rangeStart,
+  actionLoading,
+  onBlockSlot,
+  onUnblockSlot,
+  compact = false,
+}: SlotCellProps) {
+  const key = slotKey(dayIndex, hour);
+  const isActionLoading =
+    actionLoading === key ||
+    (content?.type === "blocked" &&
+      content.block &&
+      actionLoading === content.block.id);
+  const minH = compact ? "min-h-[52px]" : "min-h-[56px]";
+
+  if (content?.type === "off") {
+    return (
+      <div
+        className={`w-full h-full ${minH} rounded-lg bg-transparent border border-white/5 flex items-center justify-center text-gray-600 text-[10px]`}
+      >
+        —
+      </div>
+    );
+  }
+
+  if (content?.type === "available") {
+    return (
+      <button
+        type="button"
+        onClick={() => onBlockSlot(dayIndex, hour)}
+        disabled={!!actionLoading}
+        className={`w-full h-full ${minH} rounded-lg border border-dashed flex flex-col items-center justify-center gap-0.5 transition disabled:opacity-50 disabled:pointer-events-none ${
+          rangeStart?.dayIndex === dayIndex && rangeStart.hour === hour
+            ? "bg-amber-500/20 border-amber-500/50 text-amber-100"
+            : "bg-white/5 hover:bg-white/10 border-white/10 text-gray-500 hover:text-white"
+        }`}
+        title={
+          rangeMode
+            ? rangeStart
+              ? "Click end hour to block range"
+              : "Click start hour for range"
+            : "Click to block this hour"
+        }
+      >
+        {isActionLoading ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Available
+            </span>
+            {!compact && (
+              <span className="text-[9px] text-gray-500">+ Block time</span>
+            )}
+          </>
+        )}
+      </button>
+    );
+  }
+
+  if (content?.type === "blocked") {
+    return (
+      <button
+        type="button"
+        onClick={() => onUnblockSlot(content.block.id)}
+        disabled={!!actionLoading}
+        className={`w-full h-full ${minH} rounded-lg bg-zinc-900 border border-zinc-700 flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:bg-zinc-800 hover:text-white transition disabled:opacity-50`}
+        title="Click to unblock"
+      >
+        {isActionLoading ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <>
+            <Lock className="size-3.5" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider">
+              Blocked
+            </span>
+          </>
+        )}
+      </button>
+    );
+  }
+
+  if (content?.type === "booking") {
+    return (
+      <Link
+        href={`/admin/bookings/${content.booking.id}`}
+        className={`w-full h-full ${minH} rounded-lg bg-zinc-700/80 border border-zinc-600 flex flex-col items-stretch justify-center p-2 hover:bg-zinc-600/80 transition text-left no-underline`}
+      >
+        <p className="text-xs font-semibold text-white truncate">
+          {content.booking.firstName} {content.booking.lastName}
+        </p>
+        <p className="text-[10px] text-gray-400 truncate">
+          {content.booking.description?.slice(0, 24) ||
+            content.booking.placement}
+          {(content.booking.description?.length ?? 0) > 24 ? "…" : ""}
+        </p>
+      </Link>
+    );
+  }
+
+  return null;
+}
+
 export default function SchedulePage() {
   const [weekMonday, setWeekMonday] = useState<Date>(() => getMonday(new Date()));
   const [schedule, setSchedule] = useState<WeekSchedule | null>(null);
@@ -164,6 +298,7 @@ export default function SchedulePage() {
     dayIndex: number;
     hour: number;
   } | null>(null);
+  const [mobileDayIndex, setMobileDayIndex] = useState(0);
 
   const fetchSchedule = useCallback(async () => {
     const m = weekMonday;
@@ -182,6 +317,10 @@ export default function SchedulePage() {
   useEffect(() => {
     fetchSchedule();
   }, [fetchSchedule]);
+
+  useEffect(() => {
+    setMobileDayIndex(todayDayIndexInWeek(weekMonday));
+  }, [weekMonday]);
 
   const handlePrevWeek = () => {
     setWeekMonday((prev) => addDays(prev, -7));
@@ -262,7 +401,7 @@ export default function SchedulePage() {
 
   if (loading && !schedule) {
     return (
-      <div className="p-8 max-w-[1600px] mx-auto flex items-center justify-center min-h-[50vh]">
+      <div className="flex min-h-[50vh] w-full max-w-[1600px] items-center justify-center">
         <Loader2 className="size-8 animate-spin text-gray-500" />
       </div>
     );
@@ -303,8 +442,13 @@ export default function SchedulePage() {
     }, 0) ?? 0;
   const availableSlots = totalSlots - bookedSlots - blockedSlots;
 
+  const hours = Array.from(
+    { length: hourEnd - hourStart },
+    (_, i) => hourStart + i
+  );
+
   return (
-    <div className="p-8 space-y-6 max-w-[1600px] mx-auto w-full">
+    <div className="w-full max-w-[1600px] space-y-4 sm:space-y-6">
       {schedule && (
         <WeeklyHoursEditor
           availability={schedule.availability}
@@ -315,8 +459,8 @@ export default function SchedulePage() {
       )}
 
       {/* Header: legend + week nav */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6">
           <div className="flex items-center gap-2">
             <div className="size-3 rounded-sm bg-white/20 border border-white/30" />
             <span className="text-xs text-gray-400">Available</span>
@@ -335,14 +479,14 @@ export default function SchedulePage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
           <button
             type="button"
             onClick={() => {
               setRangeMode((v) => !v);
               setRangeStart(null);
             }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
+            className={`px-3 py-2 rounded-lg text-sm font-medium border transition min-h-[44px] ${
               rangeMode
                 ? "border-white bg-white text-black"
                 : "border-white/10 text-gray-400 hover:text-white hover:bg-white/5"
@@ -378,7 +522,7 @@ export default function SchedulePage() {
           >
             <ChevronRight className="size-5" />
           </button>
-          <span className="ml-2 text-sm font-semibold text-white min-w-[200px]">
+          <span className="w-full sm:w-auto sm:ml-2 text-sm font-semibold text-white lg:min-w-[200px]">
             {formatWeekRange(weekMonday)}
           </span>
         </div>
@@ -396,8 +540,65 @@ export default function SchedulePage() {
         </p>
       )}
 
-      {/* Calendar grid */}
-      <div className="border border-white/10 rounded-xl bg-[#0a0a0a] overflow-hidden">
+      {/* Mobile: single-day list */}
+      <div className="lg:hidden border border-white/10 rounded-xl bg-[#0a0a0a] overflow-hidden">
+        <div className="flex gap-2 overflow-x-auto p-3 border-b border-white/10 scrollbar-thin">
+          {DAY_LABELS.map((label, dayIndex) => {
+            const selected = mobileDayIndex === dayIndex;
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setMobileDayIndex(dayIndex)}
+                className={`shrink-0 min-w-[3.25rem] rounded-lg border px-3 py-2 text-center transition min-h-[44px] ${
+                  selected
+                    ? "border-white bg-white text-black"
+                    : "border-white/10 text-gray-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <p className="text-[10px] font-bold uppercase tracking-widest">
+                  {label}
+                </p>
+                <p className="text-lg font-bold leading-tight">
+                  {formatDayHeader(weekMonday, dayIndex)}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+        <div className="divide-y divide-white/5 max-h-[min(70vh,640px)] overflow-y-auto">
+          {hours.map((hour) => {
+            const key = slotKey(mobileDayIndex, hour);
+            const content = slotMap.get(key);
+            return (
+              <div
+                key={key}
+                className="flex gap-3 items-stretch p-3 min-h-[60px]"
+              >
+                <div className="w-14 shrink-0 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                  {formatHourLabel(hour)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <ScheduleSlotCell
+                    dayIndex={mobileDayIndex}
+                    hour={hour}
+                    content={content}
+                    rangeMode={rangeMode}
+                    rangeStart={rangeStart}
+                    actionLoading={actionLoading}
+                    onBlockSlot={handleBlockSlot}
+                    onUnblockSlot={handleUnblockSlot}
+                    compact
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Desktop: week grid */}
+      <div className="hidden lg:block border border-white/10 rounded-xl bg-[#0a0a0a] overflow-hidden">
         <div className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-white/10">
           <div />
           {DAY_LABELS.map((label, dayIndex) => (
@@ -415,109 +616,39 @@ export default function SchedulePage() {
           ))}
         </div>
 
-        {Array.from(
-          { length: hourEnd - hourStart },
-          (_, i) => hourStart + i
-        ).map(
-          (hour) => (
+        {hours.map((hour) => (
             <div
               key={hour}
               className="grid grid-cols-[72px_repeat(7,1fr)] border-b border-white/5 min-h-[64px]"
             >
               <div className="flex items-center justify-center border-r border-white/10 px-2">
                 <span className="text-[10px] font-bold text-gray-500">
-                  {hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
+                  {formatHourLabel(hour)}
                 </span>
               </div>
               {Array.from({ length: 7 }, (_, dayIndex) => {
                 const key = slotKey(dayIndex, hour);
                 const content = slotMap.get(key);
-                const isActionLoading =
-                  actionLoading === key || (content?.type === "blocked" && content.block && actionLoading === content.block.id);
-
                 return (
                   <div
                     key={key}
                     className="border-r border-white/5 p-1 min-h-[64px] flex flex-col"
                   >
-                    {content?.type === "off" && (
-                      <div className="w-full h-full min-h-[56px] rounded-lg bg-transparent border border-white/5 flex items-center justify-center text-gray-600 text-[10px]">
-                        —
-                      </div>
-                    )}
-                    {content?.type === "available" && (
-                      <button
-                        type="button"
-                        onClick={() => handleBlockSlot(dayIndex, hour)}
-                        disabled={!!actionLoading}
-                        className={`w-full h-full min-h-[56px] rounded-lg border border-dashed flex flex-col items-center justify-center gap-0.5 transition disabled:opacity-50 disabled:pointer-events-none ${
-                          rangeStart?.dayIndex === dayIndex &&
-                          rangeStart.hour === hour
-                            ? "bg-amber-500/20 border-amber-500/50 text-amber-100"
-                            : "bg-white/5 hover:bg-white/10 border-white/10 text-gray-500 hover:text-white"
-                        }`}
-                        title={
-                          rangeMode
-                            ? rangeStart
-                              ? "Click end hour to block range"
-                              : "Click start hour for range"
-                            : "Click to block this hour"
-                        }
-                      >
-                        {isActionLoading ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <>
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                              Available
-                            </span>
-                            <span className="text-[9px] text-gray-500">
-                              + Block time
-                            </span>
-                          </>
-                        )}
-                      </button>
-                    )}
-                    {content?.type === "blocked" && (
-                      <button
-                        type="button"
-                        onClick={() => handleUnblockSlot(content.block.id)}
-                        disabled={!!actionLoading}
-                        className="w-full h-full min-h-[56px] rounded-lg bg-zinc-900 border border-zinc-700 flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:bg-zinc-800 hover:text-white transition disabled:opacity-50"
-                        title="Click to unblock"
-                      >
-                        {isActionLoading ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Lock className="size-3.5" />
-                            <span className="text-[10px] font-semibold uppercase tracking-wider">
-                              Blocked
-                            </span>
-                          </>
-                        )}
-                      </button>
-                    )}
-                    {content?.type === "booking" && (
-                      <Link
-                        href={`/admin/bookings/${content.booking.id}`}
-                        className="w-full h-full min-h-[56px] rounded-lg bg-zinc-700/80 border border-zinc-600 flex flex-col items-stretch justify-center p-2 hover:bg-zinc-600/80 transition text-left no-underline"
-                      >
-                        <p className="text-xs font-semibold text-white truncate">
-                          {content.booking.firstName} {content.booking.lastName}
-                        </p>
-                        <p className="text-[10px] text-gray-400 truncate">
-                          {content.booking.description?.slice(0, 24) || content.booking.placement}
-                          {(content.booking.description?.length ?? 0) > 24 ? "…" : ""}
-                        </p>
-                      </Link>
-                    )}
+                    <ScheduleSlotCell
+                      dayIndex={dayIndex}
+                      hour={hour}
+                      content={content}
+                      rangeMode={rangeMode}
+                      rangeStart={rangeStart}
+                      actionLoading={actionLoading}
+                      onBlockSlot={handleBlockSlot}
+                      onUnblockSlot={handleUnblockSlot}
+                    />
                   </div>
                 );
               })}
             </div>
-          )
-        )}
+          ))}
       </div>
 
       {/* Stats */}

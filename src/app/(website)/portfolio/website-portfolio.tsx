@@ -1,5 +1,6 @@
 "use client";
 
+import StyleFilterControl from "@/components/ui/style-filter-control";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import type { PortfolioItem } from "@/types/portfolio";
@@ -42,10 +43,10 @@ export default function WebsitePortfolio({ initialItems }: Props) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease }}
         >
-          <h1 className="mb-2 text-5xl font-black uppercase tracking-tighter text-white md:text-7xl">
+          <h1 className="mb-2 text-4xl font-black uppercase tracking-tighter text-white sm:text-5xl md:text-7xl">
             Portfolio
           </h1>
-          <p className="mb-16 text-sm uppercase tracking-[0.3em] text-[var(--ink-gray-400)]">
+          <p className="mb-8 text-xs uppercase tracking-[0.2em] text-[var(--ink-gray-400)] sm:mb-16 sm:text-sm sm:tracking-[0.3em]">
             Black & Grey Specialists • Beirut, Lebanon
           </p>
         </motion.div>
@@ -55,31 +56,14 @@ export default function WebsitePortfolio({ initialItems }: Props) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.05, ease }}
-            className="mb-16 flex flex-wrap items-center gap-8 border-b border-[var(--ink-gray-800)] pb-2"
           >
-            {filters.map((label) => (
-              <motion.button
-                key={label}
-                type="button"
-                onClick={() => setActiveFilter(label)}
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                className={`relative pb-3 text-sm font-bold uppercase tracking-[0.2em] transition-colors ${
-                  activeFilter === label
-                    ? "text-white"
-                    : "text-[var(--ink-gray-500)] hover:text-white"
-                }`}
-              >
-                {label}
-                {activeFilter === label && (
-                  <motion.span
-                    layoutId="portfolio-filter"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-white"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-              </motion.button>
-            ))}
+            <StyleFilterControl
+              options={[...filters]}
+              value={activeFilter}
+              onChange={setActiveFilter}
+              variant="public"
+              label="Style"
+            />
           </motion.div>
         )}
 
@@ -108,11 +92,11 @@ export default function WebsitePortfolio({ initialItems }: Props) {
                   alt={img.title}
                   className="h-full w-full object-cover grayscale transition-all duration-700 group-hover:grayscale-0 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 flex flex-col justify-end bg-black/40 p-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 opacity-100 transition-opacity duration-300 md:from-black/40 md:opacity-0 md:group-hover:opacity-100 md:p-6">
                   <p className="text-xs uppercase tracking-widest text-[var(--ink-gray-300)]">
                     {displayTag(img)}
                   </p>
-                  <h3 className="text-lg font-bold uppercase tracking-tight text-white">
+                  <h3 className="text-base font-bold uppercase tracking-tight text-white sm:text-lg">
                     {img.title}
                   </h3>
                 </div>

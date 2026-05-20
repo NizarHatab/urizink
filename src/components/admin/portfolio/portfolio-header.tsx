@@ -21,7 +21,7 @@ export default function PortfolioHeader({ onAddWork, pieceCount = 0 }: Props) {
       <button
         type="button"
         onClick={onAddWork}
-        className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg font-bold hover:bg-gray-200 transition"
+        className="flex w-full md:w-auto items-center justify-center gap-2 px-4 py-3 md:py-2 bg-white text-black rounded-lg font-bold hover:bg-gray-200 transition min-h-[44px]"
       >
         <FiPlus />
         Upload work

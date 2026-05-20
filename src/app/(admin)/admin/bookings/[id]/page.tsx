@@ -128,7 +128,7 @@ export default function BookingDetailPage() {
 
   if (booking === undefined && !error) {
     return (
-      <div className="p-8 max-w-3xl mx-auto flex items-center justify-center min-h-[40vh]">
+      <div className="flex min-h-[40vh] w-full max-w-3xl items-center justify-center">
         <p className="text-gray-500">Loading booking…</p>
       </div>
     );
@@ -136,7 +136,7 @@ export default function BookingDetailPage() {
 
   if (error || booking === null || !booking) {
     return (
-      <div className="p-8 max-w-3xl mx-auto space-y-4">
+      <div className="w-full max-w-3xl space-y-4">
         <Link
           href="/admin/bookings"
           className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white"
@@ -164,7 +164,7 @@ export default function BookingDetailPage() {
     booking.status === "pending" || booking.status === "confirmed";
 
   return (
-    <div className="p-8 max-w-3xl mx-auto w-full space-y-6">
+    <div className="w-full max-w-3xl space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <Link
           href="/admin/bookings"
@@ -182,7 +182,7 @@ export default function BookingDetailPage() {
                   type="button"
                   onClick={handleConfirm}
                   disabled={!!actionLoading}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-white text-black hover:bg-gray-200 disabled:opacity-50 disabled:pointer-events-none transition"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold bg-white text-black transition hover:bg-gray-200 disabled:pointer-events-none disabled:opacity-50"
                 >
                   {actionLoading === "confirm" ? (
                     <span className="size-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
@@ -197,7 +197,7 @@ export default function BookingDetailPage() {
                   type="button"
                   onClick={handleComplete}
                   disabled={!!actionLoading}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 disabled:pointer-events-none transition"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-emerald-500/50 px-4 py-2 text-sm font-semibold text-emerald-400 transition hover:bg-emerald-500/10 disabled:pointer-events-none disabled:opacity-50"
                 >
                   {actionLoading === "complete" ? (
                     <span className="size-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
@@ -212,7 +212,7 @@ export default function BookingDetailPage() {
                   type="button"
                   onClick={handleCancel}
                   disabled={!!actionLoading}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-red-500/50 text-red-400 hover:bg-red-500/10 disabled:opacity-50 disabled:pointer-events-none transition"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-red-500/50 px-4 py-2 text-sm font-semibold text-red-400 transition hover:bg-red-500/10 disabled:pointer-events-none disabled:opacity-50"
                 >
                   {actionLoading === "cancel" ? (
                     <span className="size-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />

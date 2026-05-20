@@ -26,7 +26,7 @@ const item = {
 
 export default function Hero() {
   return (
-    <section className="relative flex min-h-[90vh] min-h-[650px] items-center justify-center overflow-hidden border-b border-[var(--ink-border)]">
+    <section className="relative flex min-h-[75vh] items-center justify-center overflow-hidden border-b border-[var(--ink-border)] sm:min-h-[85vh] lg:min-h-[90vh]">
       <Image
         src="/images/yara-hero.jpeg"
         alt="UrizInk Blackwork Tattoo"

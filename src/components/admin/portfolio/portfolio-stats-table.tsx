@@ -25,8 +25,8 @@ export default function PortfolioStatsTable({ items }: Props) {
     <div className="space-y-4">
       <h3 className="text-lg font-bold">Pieces by style</h3>
 
-      <div className="border border-white/10 rounded-xl bg-[#0a0a0a] overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="border border-white/10 rounded-xl bg-[#0a0a0a] overflow-x-auto">
+        <table className="w-full min-w-[280px] text-sm">
           <thead className="bg-white/5 text-gray-400 uppercase text-[10px] font-bold tracking-widest">
             <tr>
               <th className="px-6 py-4 text-left">Style</th>
