@@ -1,7 +1,6 @@
 "use client";
 
 import Hero from "@/components/sections/hero";
-import { resolvePortfolioStyleLabel } from "@/lib/portfolio-styles";
 import type { PortfolioItem } from "@/types/portfolio";
 import type { ReviewListItem, ReviewStats } from "@/types/review";
 import {
@@ -29,7 +28,7 @@ type Props = {
 };
 
 function portfolioTag(item: PortfolioItem): string {
-  if (item.style?.trim()) return resolvePortfolioStyleLabel(item.style);
+  if (item.categoryName?.trim()) return item.categoryName.trim();
   if (item.tags?.length) return item.tags[0];
   return "Portfolio";
 }

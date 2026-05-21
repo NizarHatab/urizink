@@ -8,6 +8,7 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { portfolioCategories } from "./portfolio-categories";
 
 export const portfolio = pgTable("portfolio", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -16,7 +17,9 @@ export const portfolio = pgTable("portfolio", {
 
   imageUrl: text("image_url").notNull(),
 
-  style: varchar("style", { length: 50 }),
+  categoryId: uuid("category_id").references(() => portfolioCategories.id, {
+    onDelete: "set null",
+  }),
 
   tags: text("tags").array(),
 

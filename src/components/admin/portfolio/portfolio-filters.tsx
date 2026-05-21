@@ -13,7 +13,7 @@ export default function PortfolioFilters({ styles, active, onChange }: Props) {
       value={active}
       onChange={onChange}
       variant="admin"
-      label="Filter by style"
+      label="Filter by category"
     />
   );
 }

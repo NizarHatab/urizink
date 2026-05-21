@@ -5,39 +5,39 @@ import {
   portfolioImageColorClass,
   useTapColorReveal,
 } from "@/hooks/use-tap-color-reveal";
-import {
-  normalizePortfolioStyle,
-  PUBLIC_PORTFOLIO_FILTERS,
-  resolvePortfolioStyleLabel,
-} from "@/lib/portfolio-styles";
-import type { PortfolioStyle } from "@/lib/portfolio-styles";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
+import type { PortfolioCategory } from "@/types/portfolio-category";
 import type { PortfolioItem } from "@/types/portfolio";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
 type Props = {
   initialItems: PortfolioItem[];
+  categories: PortfolioCategory[];
 };
 
 function displayTag(item: PortfolioItem): string {
-  if (item.style?.trim()) return resolvePortfolioStyleLabel(item.style);
+  if (item.categoryName?.trim()) return item.categoryName.trim();
   if (item.tags?.length) return item.tags[0];
   return "Portfolio";
 }
 
-export default function WebsitePortfolio({ initialItems }: Props) {
+export default function WebsitePortfolio({ initialItems, categories }: Props) {
   const [activeFilter, setActiveFilter] = useState<string>("All");
   const { toggleTileColor, isRevealed, clearRevealed } = useTapColorReveal();
 
+  const filterOptions = useMemo(
+    () => ["All", ...categories.map((c) => c.name)],
+    [categories],
+  );
+
   const visible = useMemo(() => {
     if (activeFilter === "All") return initialItems;
-    const canonical = activeFilter as PortfolioStyle;
-    return initialItems.filter(
-      (i) => normalizePortfolioStyle(i.style) === canonical,
-    );
-  }, [initialItems, activeFilter]);
+    const cat = categories.find((c) => c.name === activeFilter);
+    if (!cat) return initialItems;
+    return initialItems.filter((i) => i.categoryId === cat.id);
+  }, [initialItems, activeFilter, categories]);
 
   useEffect(() => {
     clearRevealed();
@@ -59,25 +59,27 @@ export default function WebsitePortfolio({ initialItems }: Props) {
           </p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.05, ease }}
-        >
-          <StyleFilterControl
-            options={[...PUBLIC_PORTFOLIO_FILTERS]}
-            value={activeFilter}
-            onChange={setActiveFilter}
-            variant="public"
-            label="Style"
-          />
-        </motion.div>
+        {filterOptions.length > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05, ease }}
+          >
+            <StyleFilterControl
+              options={filterOptions}
+              value={activeFilter}
+              onChange={setActiveFilter}
+              variant="public"
+              label="Category"
+            />
+          </motion.div>
+        )}
 
         {visible.length === 0 ? (
           <p className="py-16 text-center text-sm text-[var(--ink-gray-500)]">
             {activeFilter === "All"
               ? "New work will appear here once it is added from the admin portfolio."
-              : `No pieces in “${activeFilter}” yet. Try another style or view all.`}
+              : `No pieces in “${activeFilter}” yet. Try another category or view all.`}
           </p>
         ) : (
           <div className="masonry-grid mx-auto max-w-6xl gap-6">

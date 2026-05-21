@@ -9,8 +9,6 @@ export const PORTFOLIO_ALLOWED_MIME = new Set([
 
 export const PORTFOLIO_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 
-export { PORTFOLIO_STYLES as PORTFOLIO_STYLE_SUGGESTIONS } from "@/lib/portfolio-styles";
-
 export function validatePortfolioFile(
   file: File
 ): { ok: true } | { ok: false; error: string } {
@@ -34,4 +32,18 @@ export function mimeToExtension(mime: string): string {
   if (mime === "image/png") return "png";
   if (mime === "image/webp") return "webp";
   return "gif";
+}
+
+export function parsePortfolioTags(raw: string | null | undefined): string[] {
+  if (!raw?.trim()) return [];
+  return raw
+    .split(/[,#]/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .slice(0, 20);
+}
+
+export function formatPortfolioTags(tags: string[] | null | undefined): string {
+  if (!tags?.length) return "";
+  return tags.join(", ");
 }

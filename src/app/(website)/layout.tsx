@@ -38,9 +38,9 @@ export default function WebsiteLayout({
       <body className="bg-black text-white font-sans antialiased">
         <AppToaster position="top-right" />
         <main className="flex min-h-screen flex-col items-center">
-          <div className="flex w-full min-h-screen flex-col overflow-x-hidden bg-black text-white">
+          <div className="flex w-full min-h-screen flex-col bg-black text-white">
             <Header />
-            <div className="flex-1 w-full flex flex-col">
+            <div className="flex w-full flex-1 flex-col overflow-x-hidden">
               {children}
             </div>
             <Footer />

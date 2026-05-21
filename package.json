@@ -10,6 +10,7 @@
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts && node scripts/apply-pending-migrations.mjs",
     "db:status": "node scripts/check-db.mjs",
     "db:apply-pending": "node scripts/apply-pending-migrations.mjs",
+    "db:migrate-styles": "node scripts/migrate-portfolio-styles-to-categories.mjs",
     "db:studio": "drizzle-kit studio --config=drizzle.config.ts"
   },
   "dependencies": {

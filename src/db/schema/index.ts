@@ -3,6 +3,7 @@ import { pgTable, uuid, varchar, timestamp, text, boolean, integer } from "drizz
 
 export * from "./users";
 export * from "./bookings";
+export * from "./portfolio-categories";
 export * from "./portfolio";
 export * from "./reviews";
 export * from "./schedule";

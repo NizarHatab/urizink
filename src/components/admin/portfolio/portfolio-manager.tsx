@@ -1,14 +1,12 @@
 "use client";
 
-import {
-  PORTFOLIO_STYLES,
-  normalizePortfolioStyle,
-} from "@/lib/portfolio-styles";
+import { fetchPortfolioCategories } from "@/lib/api/portfolio-categories";
 import {
   deletePortfolioItem as deletePortfolioRequest,
   fetchPortfolio,
   patchPortfolioItem,
 } from "@/lib/api/portfolio";
+import type { PortfolioCategory } from "@/types/portfolio-category";
 import { notify } from "@/lib/ui/toast";
 import type { PortfolioItem } from "@/types/portfolio";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -17,29 +15,38 @@ import PortfolioGrid from "./portfolio-grid";
 import PortfolioHeader from "./portfolio-header";
 import PortfolioStatsTable from "./portfolio-stats-table";
 import ConfirmDialog from "@/components/admin/confirm-dialog";
+import PortfolioEditModal from "./portfolio-edit-modal";
 import PortfolioUploadModal from "./portfolio-upload-modal";
 
 export default function PortfolioManager() {
   const [items, setItems] = useState<PortfolioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [styleFilter, setStyleFilter] = useState<string>("All");
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<PortfolioItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PortfolioItem | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [featuredUpdatingId, setFeaturedUpdatingId] = useState<string | null>(
     null,
   );
+  const [categories, setCategories] = useState<PortfolioCategory[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const pRes = await fetchPortfolio();
+    const [pRes, cRes] = await Promise.all([
+      fetchPortfolio(),
+      fetchPortfolioCategories(),
+    ]);
     if (!pRes.success) {
       setError(pRes.error ?? "Failed to load portfolio");
       setItems([]);
     } else {
       setItems(pRes.data ?? []);
+    }
+    if (cRes.success && cRes.data) {
+      setCategories(cRes.data);
     }
     setLoading(false);
   }, []);
@@ -48,26 +55,23 @@ export default function PortfolioManager() {
     load();
   }, [load]);
 
-  const styleOptions = useMemo(() => {
-    const hasOther = items.some(
-      (i) => i.style?.trim() && !normalizePortfolioStyle(i.style),
-    );
-    const list = ["All", ...PORTFOLIO_STYLES];
-    if (hasOther) list.push("Other");
+  const categoryOptions = useMemo(() => {
+    const names = categories.map((c) => c.name);
+    const hasUncategorized = items.some((i) => !i.categoryId);
+    const list = ["All", ...names];
+    if (hasUncategorized) list.push("Uncategorized");
     return list;
-  }, [items]);
+  }, [items, categories]);
 
   const filtered = useMemo(() => {
-    if (styleFilter === "All") return items;
-    if (styleFilter === "Other") {
-      return items.filter(
-        (i) => i.style?.trim() && !normalizePortfolioStyle(i.style),
-      );
+    if (categoryFilter === "All") return items;
+    if (categoryFilter === "Uncategorized") {
+      return items.filter((i) => !i.categoryId);
     }
-    return items.filter(
-      (i) => normalizePortfolioStyle(i.style) === styleFilter,
-    );
-  }, [items, styleFilter]);
+    const cat = categories.find((c) => c.name === categoryFilter);
+    if (!cat) return items;
+    return items.filter((i) => i.categoryId === cat.id);
+  }, [items, categoryFilter, categories]);
 
   async function handleToggleFeatured(id: string, next: boolean) {
     setFeaturedUpdatingId(id);
@@ -87,6 +91,17 @@ export default function PortfolioManager() {
 
   function onUploaded(item: PortfolioItem) {
     setItems((prev) => [item, ...prev]);
+  }
+
+  function onUpdated(item: PortfolioItem) {
+    setItems((prev) =>
+      prev.map((x) => (x.id === item.id ? { ...x, ...item } : x)),
+    );
+  }
+
+  function requestEdit(id: string) {
+    const item = items.find((x) => x.id === id);
+    if (item) setEditTarget(item);
   }
 
   function requestDelete(id: string) {
@@ -124,9 +139,9 @@ export default function PortfolioManager() {
         onAddWork={() => setUploadOpen(true)}
       />
       <PortfolioFilters
-        styles={styleOptions}
-        active={styleFilter}
-        onChange={setStyleFilter}
+        styles={categoryOptions}
+        active={categoryFilter}
+        onChange={setCategoryFilter}
       />
       {loading ? (
         <div className="flex min-h-[30vh] items-center justify-center text-sm text-gray-500">
@@ -149,13 +164,13 @@ export default function PortfolioManager() {
         </div>
       ) : (
         <>
-          {filtered.length === 0 && styleFilter !== "All" ? (
+          {filtered.length === 0 && categoryFilter !== "All" ? (
             <p className="text-sm text-gray-500 py-8 text-center">
-              No pieces with style &ldquo;{styleFilter}&rdquo;.{" "}
+              No pieces in &ldquo;{categoryFilter}&rdquo;.{" "}
               <button
                 type="button"
                 className="underline hover:text-white"
-                onClick={() => setStyleFilter("All")}
+                onClick={() => setCategoryFilter("All")}
               >
                 Show all
               </button>
@@ -163,6 +178,7 @@ export default function PortfolioManager() {
           ) : (
             <PortfolioGrid
               items={filtered}
+              onEdit={requestEdit}
               onDelete={requestDelete}
               onToggleFeatured={handleToggleFeatured}
               featuredUpdatingId={featuredUpdatingId}
@@ -176,6 +192,14 @@ export default function PortfolioManager() {
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
         onSuccess={onUploaded}
+        categories={categories}
+      />
+      <PortfolioEditModal
+        open={!!editTarget}
+        item={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSuccess={onUpdated}
+        categories={categories}
       />
       <ConfirmDialog
         open={!!deleteTarget}

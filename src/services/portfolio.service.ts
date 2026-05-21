@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { portfolio } from "@/db/schema/portfolio";
-import { coercePortfolioStyleForStorage } from "@/lib/portfolio-styles";
+import { portfolioCategories } from "@/db/schema/portfolio-categories";
 import { getStudioDisplayName } from "@/lib/studio";
 import { desc, eq } from "drizzle-orm";
 
@@ -8,7 +8,8 @@ export type PortfolioRow = {
   id: string;
   title: string;
   imageUrl: string;
-  style: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
   tags: string[] | null;
   featuredOnHome: boolean;
   homeSortOrder: number;
@@ -22,11 +23,24 @@ function withStudioName<T extends Omit<PortfolioRow, "studioName">>(
   return { ...row, studioName: getStudioDisplayName() };
 }
 
+const portfolioSelect = {
+  id: portfolio.id,
+  title: portfolio.title,
+  imageUrl: portfolio.imageUrl,
+  categoryId: portfolio.categoryId,
+  categoryName: portfolioCategories.name,
+  tags: portfolio.tags,
+  featuredOnHome: portfolio.featuredOnHome,
+  homeSortOrder: portfolio.homeSortOrder,
+  createdAt: portfolio.createdAt,
+};
+
 function mapRow(r: {
   id: string;
   title: string;
   imageUrl: string;
-  style: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
   tags: string[] | null;
   featuredOnHome: boolean;
   homeSortOrder: number;
@@ -40,17 +54,12 @@ function mapRow(r: {
 
 export async function getPortfolioItems(): Promise<PortfolioRow[]> {
   const rows = await db
-    .select({
-      id: portfolio.id,
-      title: portfolio.title,
-      imageUrl: portfolio.imageUrl,
-      style: portfolio.style,
-      tags: portfolio.tags,
-      featuredOnHome: portfolio.featuredOnHome,
-      homeSortOrder: portfolio.homeSortOrder,
-      createdAt: portfolio.createdAt,
-    })
+    .select(portfolioSelect)
     .from(portfolio)
+    .leftJoin(
+      portfolioCategories,
+      eq(portfolio.categoryId, portfolioCategories.id),
+    )
     .orderBy(desc(portfolio.createdAt));
 
   return rows.map(mapRow);
@@ -60,17 +69,12 @@ export async function getHomeFeaturedPortfolioItems(
   limit = 8,
 ): Promise<PortfolioRow[]> {
   const featured = await db
-    .select({
-      id: portfolio.id,
-      title: portfolio.title,
-      imageUrl: portfolio.imageUrl,
-      style: portfolio.style,
-      tags: portfolio.tags,
-      featuredOnHome: portfolio.featuredOnHome,
-      homeSortOrder: portfolio.homeSortOrder,
-      createdAt: portfolio.createdAt,
-    })
+    .select(portfolioSelect)
     .from(portfolio)
+    .leftJoin(
+      portfolioCategories,
+      eq(portfolio.categoryId, portfolioCategories.id),
+    )
     .where(eq(portfolio.featuredOnHome, true))
     .orderBy(desc(portfolio.homeSortOrder), desc(portfolio.createdAt));
 
@@ -85,7 +89,7 @@ export async function getHomeFeaturedPortfolioItems(
 export async function createPortfolioItem(data: {
   title: string;
   imageUrl: string;
-  style?: string | null;
+  categoryId?: string | null;
   tags?: string[] | null;
 }) {
   const [row] = await db
@@ -93,7 +97,7 @@ export async function createPortfolioItem(data: {
     .values({
       title: data.title,
       imageUrl: data.imageUrl,
-      style: coercePortfolioStyleForStorage(data.style),
+      categoryId: data.categoryId ?? null,
       tags: data.tags?.length ? data.tags : null,
     })
     .returning();
@@ -103,25 +107,40 @@ export async function createPortfolioItem(data: {
 export async function updatePortfolioItem(
   id: string,
   data: {
+    title?: string;
+    imageUrl?: string;
+    tags?: string[] | null;
     featuredOnHome?: boolean;
     homeSortOrder?: number;
-    style?: string | null;
+    categoryId?: string | null;
   },
 ): Promise<PortfolioRow | null> {
   const patch: Partial<{
+    title: string;
+    imageUrl: string;
+    tags: string[] | null;
     featuredOnHome: boolean;
     homeSortOrder: number;
-    style: string | null;
+    categoryId: string | null;
   }> = {};
 
+  if (typeof data.title === "string" && data.title.trim()) {
+    patch.title = data.title.trim().slice(0, 150);
+  }
+  if (typeof data.imageUrl === "string" && data.imageUrl.trim()) {
+    patch.imageUrl = data.imageUrl.trim();
+  }
+  if (data.tags !== undefined) {
+    patch.tags = data.tags?.length ? data.tags : null;
+  }
   if (typeof data.featuredOnHome === "boolean") {
     patch.featuredOnHome = data.featuredOnHome;
   }
   if (typeof data.homeSortOrder === "number") {
     patch.homeSortOrder = data.homeSortOrder;
   }
-  if (data.style !== undefined) {
-    patch.style = coercePortfolioStyleForStorage(data.style);
+  if (data.categoryId !== undefined) {
+    patch.categoryId = data.categoryId;
   }
 
   if (Object.keys(patch).length === 0) {
@@ -154,17 +173,12 @@ export async function getPortfolioRowById(
   id: string,
 ): Promise<PortfolioRow | null> {
   const [row] = await db
-    .select({
-      id: portfolio.id,
-      title: portfolio.title,
-      imageUrl: portfolio.imageUrl,
-      style: portfolio.style,
-      tags: portfolio.tags,
-      featuredOnHome: portfolio.featuredOnHome,
-      homeSortOrder: portfolio.homeSortOrder,
-      createdAt: portfolio.createdAt,
-    })
+    .select(portfolioSelect)
     .from(portfolio)
+    .leftJoin(
+      portfolioCategories,
+      eq(portfolio.categoryId, portfolioCategories.id),
+    )
     .where(eq(portfolio.id, id))
     .limit(1);
   if (!row) return null;
