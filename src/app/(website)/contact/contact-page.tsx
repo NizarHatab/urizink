@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import WhatsAppOptInSheet from "@/components/website/whatsapp-opt-in-sheet";
 import { submitContactForm } from "@/lib/api/contact";
 import { notify } from "@/lib/ui/toast";
 import {
   isWhatsAppEnabled,
   sendContactToWhatsApp,
+  type ContactWhatsAppPayload,
 } from "@/lib/whatsapp";
 import { motion } from "framer-motion";
 import { Clock, Mail, MapPin, Phone, type LucideIcon } from "lucide-react";
@@ -18,6 +20,9 @@ type Props = {
 
 export default function ContactPage({ hoursLines }: Props) {
   const [loading, setLoading] = useState(false);
+  const [whatsAppSheetOpen, setWhatsAppSheetOpen] = useState(false);
+  const [whatsAppPayload, setWhatsAppPayload] =
+    useState<ContactWhatsAppPayload | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -40,14 +45,11 @@ export default function ContactPage({ hoursLines }: Props) {
       return;
     }
 
-    notify.success(
-      isWhatsAppEnabled()
-        ? "Message sent — we'll reply soon. You can also open WhatsApp if you prefer."
-        : "Message sent — we'll get back to you soon.",
-    );
+    notify.success("Message sent — we'll get back to you soon.");
 
     if (isWhatsAppEnabled()) {
-      sendContactToWhatsApp(payload);
+      setWhatsAppPayload(payload);
+      setWhatsAppSheetOpen(true);
     }
 
     setLoading(false);
@@ -56,6 +58,18 @@ export default function ContactPage({ hoursLines }: Props) {
 
   return (
     <div className="flex w-full grow flex-col">
+      <WhatsAppOptInSheet
+        open={whatsAppSheetOpen}
+        onClose={() => {
+          setWhatsAppSheetOpen(false);
+          setWhatsAppPayload(null);
+        }}
+        onConfirm={() => {
+          if (whatsAppPayload) sendContactToWhatsApp(whatsAppPayload);
+        }}
+        title="Also send on WhatsApp?"
+        description="Your inquiry was emailed to the studio. Open WhatsApp with your message pre-filled, or skip — we'll reply by email."
+      />
         {/* HERO */}
         <motion.section
           initial={{ opacity: 0 }}
@@ -150,6 +164,9 @@ export default function ContactPage({ hoursLines }: Props) {
             </h2>
             <p className="mb-10 text-sm text-[var(--ink-gray-500)]">
               Fill out the form below for appointments or general questions.
+              {isWhatsAppEnabled()
+                ? " After sending, you can optionally message us on WhatsApp."
+                : null}
             </p>
 
             <form

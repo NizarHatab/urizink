@@ -15,7 +15,12 @@ import {
   BOOKING_REFERENCE_MAX_FILES,
   validateBookingReferenceFiles,
 } from "@/lib/booking-reference-upload";
-import { isWhatsAppEnabled, sendBookingToWhatsApp } from "@/lib/whatsapp";
+import WhatsAppOptInSheet from "@/components/website/whatsapp-opt-in-sheet";
+import {
+  isWhatsAppEnabled,
+  sendBookingToWhatsApp,
+  type BookingWhatsAppPayload,
+} from "@/lib/whatsapp";
 import {
   formatStudioTimeLabel,
   utcToStudioHm,
@@ -30,6 +35,9 @@ const ease = [0.16, 1, 0.3, 1] as const;
 
 export default function Page() {
   const [loading, setLoading] = useState(false);
+  const [whatsAppSheetOpen, setWhatsAppSheetOpen] = useState(false);
+  const [whatsAppPayload, setWhatsAppPayload] =
+    useState<BookingWhatsAppPayload | null>(null);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [availableSlots, setAvailableSlots] = useState<{ start: string; end: string; label?: string }[]>([]);
@@ -134,18 +142,14 @@ export default function Page() {
         setLoading(false);
         return;
       }
+      notify.success("Booking request received — we'll contact you soon.");
+
       if (isWhatsAppEnabled()) {
-        sendBookingToWhatsApp({
+        setWhatsAppPayload({
           ...parsed.data,
           referenceImageUrls: res.booking?.referenceImageUrls,
         });
-        notify.success(
-          "Booking saved — we emailed the studio. You can also send the WhatsApp message if you opened it.",
-        );
-      } else {
-        notify.success(
-          "Booking request received — we'll contact you soon.",
-        );
+        setWhatsAppSheetOpen(true);
       }
       form.reset();
       clearReferenceFiles();
@@ -163,6 +167,18 @@ export default function Page() {
 
   return (
     <div className="flex w-full flex-col items-center px-4 py-16 md:px-10 md:py-24">
+      <WhatsAppOptInSheet
+        open={whatsAppSheetOpen}
+        onClose={() => {
+          setWhatsAppSheetOpen(false);
+          setWhatsAppPayload(null);
+        }}
+        onConfirm={() => {
+          if (whatsAppPayload) sendBookingToWhatsApp(whatsAppPayload);
+        }}
+        title="Also send on WhatsApp?"
+        description="Your booking was emailed to the studio. Open WhatsApp with your details pre-filled, or skip — we'll follow up by email."
+      />
       <div className="w-full max-w-2xl">
         {/* PAGE HEADER */}
         <motion.header
@@ -413,7 +429,7 @@ export default function Page() {
             </motion.button>
             <p className="mt-4 text-center text-xs text-[var(--ink-gray-500)]">
               {isWhatsAppEnabled()
-                ? "We’ll email the studio. You may also open WhatsApp with your details pre-filled."
+                ? "We’ll email the studio. After submitting, you can optionally message us on WhatsApp."
                 : "We’ll email the studio and follow up with you soon."}
             </p>
           </motion.div>

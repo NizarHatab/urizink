@@ -23,7 +23,12 @@ export default function AdminLoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Login failed");
+        setError(
+          data.error ??
+            (res.status === 503
+              ? "Server login is not configured. Contact the site owner."
+              : "Login failed"),
+        );
         setLoading(false);
         return;
       }
