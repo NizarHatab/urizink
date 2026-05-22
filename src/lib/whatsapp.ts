@@ -3,7 +3,18 @@ import {
   formatDurationLabel,
 } from "@/lib/booking-duration";
 
-const WHATSAPP_PHONE = "96176734662";
+/** E.164 without + — e.g. 96176734662 */
+function getWhatsAppPhone(): string {
+  const raw =
+    process.env.NEXT_PUBLIC_WHATSAPP_PHONE?.trim().replace(/\D/g, "") ||
+    "96176734662";
+  return raw;
+}
+
+/** Set NEXT_PUBLIC_ENABLE_WHATSAPP=false to hide optional WhatsApp prompts */
+export function isWhatsAppEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_ENABLE_WHATSAPP !== "false";
+}
 
 export type ContactWhatsAppPayload = {
   firstName: string;
@@ -26,13 +37,20 @@ export type BookingWhatsAppPayload = {
   referenceImageUrls?: string[];
 };
 
-function openWhatsApp(text: string) {
+export function buildWhatsAppUrl(text: string): string {
   const encoded = encodeURIComponent(text.trim());
-  window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encoded}`, "_blank");
+  return `https://wa.me/${getWhatsAppPhone()}?text=${encoded}`;
+}
+
+function openWhatsApp(text: string) {
+  if (!isWhatsAppEnabled()) return;
+  window.open(buildWhatsAppUrl(text), "_blank", "noopener,noreferrer");
 }
 
 /** Contact page — general inquiry layout */
 export function sendContactToWhatsApp(data: ContactWhatsAppPayload) {
+  if (!isWhatsAppEnabled()) return;
+
   const text = `🔥 New Contact Request
 
 👤 Name: ${data.firstName} ${data.lastName}
@@ -50,6 +68,8 @@ export const sendToWhatsApp = sendContactToWhatsApp;
 
 /** Booking page — session request layout */
 export function sendBookingToWhatsApp(data: BookingWhatsAppPayload) {
+  if (!isWhatsAppEnabled()) return;
+
   const duration = formatDurationLabel(durationMinutesFromSize(data.size));
 
   let slotSection: string;

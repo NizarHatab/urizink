@@ -39,6 +39,12 @@ export default async function createBookingRequest(
         });
         const json = await response.json().catch(() => ({}));
         if (!response.ok) {
+            if (response.status === 429) {
+                throw new Error(
+                    (json as { error?: string }).error ??
+                        "Too many booking requests. Please try again in a few minutes.",
+                );
+            }
             throw new Error(formatValidationError(json as { error?: string; issues?: ZodIssue[] }));
         }
         return {

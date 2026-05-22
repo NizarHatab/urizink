@@ -4,14 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 
 const SCROLL_THRESHOLD = 48;
-
-/** Matches header bar height so content is not hidden under fixed nav */
-export const HEADER_OFFSET_CLASS =
-  "pt-20 md:pt-[4.25rem] lg:pt-20";
 
 export default function Header() {
   const [open, setOpen] = useState(false);
@@ -30,16 +26,18 @@ export default function Header() {
   }, [pathname]);
 
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = prev;
     };
   }, [open]);
 
   return (
     <>
       <header
-        className={`fixed top-0 right-0 left-0 z-50 border-b bg-black transition-shadow duration-300 ${
+        className={`sticky top-0 z-50 border-b bg-black transition-shadow duration-300 ${
           scrolled
             ? "border-neutral-800 shadow-[0_8px_32px_rgba(0,0,0,0.45)] md:border-white/10 md:bg-black/95 md:backdrop-blur-md"
             : "border-neutral-800"
@@ -100,10 +98,11 @@ export default function Header() {
         </div>
       </header>
 
-      {/* Spacer: keeps hero/content below the fixed bar from first paint */}
-      <div className={HEADER_OFFSET_CLASS} aria-hidden />
-
-      <MobileMenu open={open} onClose={() => setOpen(false)} />
+      <AnimatePresence>
+        {open ? (
+          <MobileMenu key="mobile-menu" onClose={() => setOpen(false)} />
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }
@@ -138,19 +137,17 @@ function NavLink({
   );
 }
 
-function MobileMenu({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+function MobileMenu({ onClose }: { onClose: () => void }) {
   return (
-    <div
-      className={`fixed inset-0 z-[70] bg-black transition-transform duration-300 ease-out md:hidden ${
-        open ? "translate-x-0" : "pointer-events-none translate-x-full"
-      }`}
-      aria-hidden={!open}
+    <motion.div
+      initial={{ x: "100%" }}
+      animate={{ x: 0 }}
+      exit={{ x: "100%" }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      className="fixed inset-0 z-[70] bg-black md:hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Menu"
     >
       <div className="flex h-20 items-center justify-between border-b border-neutral-800 px-6">
         <span className="font-display text-sm font-black uppercase tracking-widest text-white">
@@ -166,7 +163,7 @@ function MobileMenu({
         </button>
       </div>
 
-      <nav className="flex h-[calc(100vh-5rem)] flex-col items-center justify-center gap-10 text-lg">
+      <nav className="flex h-[calc(100dvh-5rem)] flex-col items-center justify-center gap-10 overflow-y-auto text-lg">
         <MobileNavLink href="/" onClick={onClose}>
           Home
         </MobileNavLink>
@@ -191,7 +188,7 @@ function MobileMenu({
           Book Now
         </Link>
       </nav>
-    </div>
+    </motion.div>
   );
 }
 

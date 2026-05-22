@@ -1,13 +1,20 @@
 import "server-only";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { verifyToken, authConfig } from "@/lib/auth";
 import type { JWTPayload } from "@/lib/auth";
+import { getAdminPayloadFromCookies } from "@/lib/verify-admin-session";
 
 export interface AuthenticatedUser {
   id: string;
   email: string;
   isAdmin: boolean;
+}
+
+function payloadToUser(payload: JWTPayload): AuthenticatedUser {
+  return {
+    id: payload.sub,
+    email: payload.email,
+    isAdmin: payload.isAdmin ?? false,
+  };
 }
 
 /**
@@ -16,22 +23,9 @@ export interface AuthenticatedUser {
  */
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get(authConfig.cookieName)?.value;
-    if (!token) {
-      return null;
-    }
-
-    const payload = await verifyToken(token);
-    if (!payload) {
-      return null;
-    }
-
-    return {
-      id: payload.sub,
-      email: payload.email,
-      isAdmin: payload.isAdmin ?? false,
-    };
+    const payload = await getAdminPayloadFromCookies();
+    if (!payload) return null;
+    return payloadToUser(payload);
   } catch (error) {
     console.error("AUTH_ERROR:", error);
     return null;
@@ -67,10 +61,10 @@ export async function requireAdmin(): Promise<AuthenticatedUser> {
     throw NextResponse.json(
       {
         success: false,
-        error: "Admin access required",
-        statusCode: 403,
+        error: "Unauthorized",
+        statusCode: 401,
       },
-      { status: 403 }
+      { status: 401 }
     );
   }
   return user;

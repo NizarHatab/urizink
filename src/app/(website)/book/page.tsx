@@ -15,7 +15,7 @@ import {
   BOOKING_REFERENCE_MAX_FILES,
   validateBookingReferenceFiles,
 } from "@/lib/booking-reference-upload";
-import { sendBookingToWhatsApp } from "@/lib/whatsapp";
+import { isWhatsAppEnabled, sendBookingToWhatsApp } from "@/lib/whatsapp";
 import {
   formatStudioTimeLabel,
   utcToStudioHm,
@@ -134,13 +134,19 @@ export default function Page() {
         setLoading(false);
         return;
       }
-      sendBookingToWhatsApp({
-        ...parsed.data,
-        referenceImageUrls: res.booking?.referenceImageUrls,
-      });
-      notify.success(
-        "Request saved — complete the message in WhatsApp to send it to Uriz"
-      );
+      if (isWhatsAppEnabled()) {
+        sendBookingToWhatsApp({
+          ...parsed.data,
+          referenceImageUrls: res.booking?.referenceImageUrls,
+        });
+        notify.success(
+          "Booking saved — we emailed the studio. You can also send the WhatsApp message if you opened it.",
+        );
+      } else {
+        notify.success(
+          "Booking request received — we'll contact you soon.",
+        );
+      }
       form.reset();
       clearReferenceFiles();
       setSelectedDate("");
@@ -406,7 +412,9 @@ export default function Page() {
               <span className="text-lg">→</span>
             </motion.button>
             <p className="mt-4 text-center text-xs text-[var(--ink-gray-500)]">
-              You’ll open WhatsApp with your details pre-filled — tap send to reach Uriz.
+              {isWhatsAppEnabled()
+                ? "We’ll email the studio. You may also open WhatsApp with your details pre-filled."
+                : "We’ll email the studio and follow up with you soon."}
             </p>
           </motion.div>
         </form>

@@ -9,6 +9,7 @@ import { parseReferenceImageUrls } from "@/lib/parse-booking-reference-urls";
 import { parseHour, parseMinute } from "@/lib/schedule-helpers";
 import { studioWallToUtc } from "@/lib/studio-time";
 import { isSlotAvailable } from "@/services/schedule.service";
+import { notifyNewBooking } from "@/lib/notifications/notify-studio";
 import { findOrCreateUserByEmail } from "./user.service";
 import { Booking, BookingCreateInput, BookingResponse } from "@/types";
 
@@ -90,7 +91,22 @@ export async function createBooking(
     }
   }
 
-  return { ...booking, referenceImageUrls };
+  const result = { ...booking, referenceImageUrls };
+
+  notifyNewBooking({
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email,
+    phone: data.phone,
+    description: data.description,
+    placement: data.placement,
+    size: data.size,
+    scheduledAt: scheduledAt ?? null,
+    referenceImageUrls,
+    bookingId: booking.id,
+  });
+
+  return result;
 }
 
 export async function getBookings(): Promise<BookingResponse> {

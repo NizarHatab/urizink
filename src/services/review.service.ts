@@ -9,6 +9,7 @@ import type {
   ReviewStats,
   ReviewsPayload,
 } from "@/types/review";
+import { notifyNewReview } from "@/lib/notifications/notify-studio";
 import { findOrCreateUserByEmail } from "./user.service";
 
 function authorName(firstName: string | null, lastName: string | null): string {
@@ -140,6 +141,15 @@ export async function createReview(
     .returning();
 
   if (!row) throw new Error("Failed to create review");
+
+  notifyNewReview({
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email,
+    rating: data.rating,
+    comment: data.comment,
+    reviewId: row.id,
+  });
 
   return {
     id: row.id,

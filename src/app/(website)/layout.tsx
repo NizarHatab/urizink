@@ -35,17 +35,11 @@ export default function WebsiteLayout({
 }>) {
   return (
     <html lang="en" className={`${bebasNeue.variable} ${barlow.variable}`}>
-      <body className="bg-black text-white font-sans antialiased">
+      <body className="min-h-screen overflow-x-clip bg-black font-sans text-white antialiased">
         <AppToaster position="top-right" />
-        <main className="flex min-h-screen flex-col items-center">
-          <div className="flex w-full min-h-screen flex-col bg-black text-white">
-            <Header />
-            <div className="flex w-full flex-1 flex-col overflow-x-hidden">
-              {children}
-            </div>
-            <Footer />
-          </div>
-        </main>
+        <Header />
+        <main className="w-full">{children}</main>
+        <Footer />
       </body>
     </html>
   );

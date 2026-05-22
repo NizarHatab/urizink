@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { getClientIp, normalizeRateLimitKey } from "@/lib/client-ip";
 import { parseBookingMultipart } from "@/lib/parse-booking-form";
+import {
+  checkBookingEmailLimits,
+  checkBookingIpLimits,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 import { requireAdminApi } from "@/lib/require-admin-api";
 import { createBooking, getBookings } from "@/services/booking.service";
 import { bookingCreateSchema } from "@/lib/validators/booking";
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    const ipLimit = await checkBookingIpLimits(ip);
+    if (!ipLimit.ok) return rateLimitResponse(ipLimit);
+
     const contentType = req.headers.get("content-type") ?? "";
     let files: File[] = [];
     let body: unknown;
@@ -27,6 +37,10 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const emailKey = normalizeRateLimitKey(validated.data.email);
+    const emailLimit = await checkBookingEmailLimits(emailKey);
+    if (!emailLimit.ok) return rateLimitResponse(emailLimit);
 
     const booking = await createBooking(validated.data, files);
 

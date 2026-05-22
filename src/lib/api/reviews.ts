@@ -32,6 +32,14 @@ export async function submitReview(
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
+      if (res.status === 429) {
+        return {
+          success: false,
+          error:
+            (json as { error?: string }).error ??
+            "Too many attempts. Please try again in a few minutes.",
+        };
+      }
       return {
         success: false,
         error: (json as { error?: string }).error ?? "Failed to submit review",

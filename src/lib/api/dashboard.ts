@@ -3,7 +3,10 @@ import type { DashboardStats } from "@/types/dashboard";
 
 export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
   try {
-    const res = await fetch("/api/admin/dashboard", { method: "GET" });
+    const res = await fetch("/api/admin/dashboard", {
+      method: "GET",
+      credentials: "same-origin",
+    });
     const json: ApiResponse<DashboardStats> = await res.json();
     if (!res.ok || !json.success) {
       return {

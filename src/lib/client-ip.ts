@@ -1,0 +1,19 @@
+/**
+ * Client IP for rate limiting (Vercel / reverse proxies).
+ */
+export function getClientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const first = forwarded.split(",")[0]?.trim();
+    if (first) return first;
+  }
+
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+
+  return "unknown";
+}
+
+export function normalizeRateLimitKey(value: string): string {
+  return value.trim().toLowerCase().slice(0, 200);
+}

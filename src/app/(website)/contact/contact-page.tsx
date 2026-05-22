@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { sendToWhatsApp } from "@/lib/whatsapp";
+import { submitContactForm } from "@/lib/api/contact";
+import { notify } from "@/lib/ui/toast";
+import {
+  isWhatsAppEnabled,
+  sendContactToWhatsApp,
+} from "@/lib/whatsapp";
 import { motion } from "framer-motion";
 import { Clock, Mail, MapPin, Phone, type LucideIcon } from "lucide-react";
 
@@ -21,23 +26,30 @@ export default function ContactPage({ hoursLines }: Props) {
     const form = e.currentTarget;
     const data = new FormData(form);
     const payload = {
-      firstName: data.get("firstName") as string,
-      lastName: data.get("lastName") as string,
-      email: data.get("email") as string,
-      subject: data.get("subject") as string,
-      message: data.get("message") as string,
+      firstName: String(data.get("firstName") ?? "").trim(),
+      lastName: String(data.get("lastName") ?? "").trim(),
+      email: String(data.get("email") ?? "").trim(),
+      subject: String(data.get("subject") ?? "").trim(),
+      message: String(data.get("message") ?? "").trim(),
     };
-    if (
-      !payload.firstName ||
-      !payload.lastName ||
-      !payload.email ||
-      !payload.message
-    ) {
-      alert("Please fill in all required fields.");
+
+    const res = await submitContactForm(payload);
+    if (!res.success) {
+      notify.error(res.error ?? "Could not send your message");
       setLoading(false);
       return;
     }
-    sendToWhatsApp(payload);
+
+    notify.success(
+      isWhatsAppEnabled()
+        ? "Message sent — we'll reply soon. You can also open WhatsApp if you prefer."
+        : "Message sent — we'll get back to you soon.",
+    );
+
+    if (isWhatsAppEnabled()) {
+      sendContactToWhatsApp(payload);
+    }
+
     setLoading(false);
     form.reset();
   };
