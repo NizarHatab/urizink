@@ -78,19 +78,25 @@ async function runChecks(
     return { ok: true };
   }
 
-  for (const { limiter, id } of active) {
-    const { success, reset } = await limiter!.limit(id);
-    if (!success) {
-      const retryAfterSec = Math.max(
-        1,
-        Math.ceil((reset - Date.now()) / 1000),
-      );
-      return {
-        ok: false,
-        retryAfterSec,
-        message: "Too many requests. Please wait a few minutes and try again.",
-      };
+  try {
+    for (const { limiter, id } of active) {
+      const { success, reset } = await limiter!.limit(id);
+      if (!success) {
+        const retryAfterSec = Math.max(
+          1,
+          Math.ceil((reset - Date.now()) / 1000),
+        );
+        return {
+          ok: false,
+          retryAfterSec,
+          message: "Too many requests. Please wait a few minutes and try again.",
+        };
+      }
     }
+  } catch (error) {
+    // Fail open: never block bookings/reviews/contact when Redis is down or misconfigured.
+    console.error("[rate-limit] Upstash check failed — allowing request:", error);
+    return { ok: true };
   }
 
   return { ok: true };
